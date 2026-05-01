@@ -1,3 +1,4 @@
+#define NOMINMAX
 #include <windows.h>
 #include <stdio.h>
 #include <dxgi1_6.h>
@@ -129,11 +130,6 @@ bool Application::Initialize()
         return false;
     }
     std::cout << "Genetics integration initialized successfully." << std::endl;
-    std::cout.flush();
-    
-    // Add a test creature
-    m_geneticsIntegration->AddCreature("Chordata", "test_creature_001");
-    std::cout << "Test creature added." << std::endl;
     std::cout.flush();
     
     // Initialize camera system

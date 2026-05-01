@@ -124,9 +124,9 @@
     <PostBuildEvent>
       <Message>Copying shader files to output directory</Message>
       <Command>setlocal
-"D:\Program Files\CMake\bin\cmake.exe" -E copy_if_different C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/src/graphics/vertex.hlsl C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/build/bin/vertex.hlsl
+"D:\Program Files\CMake\bin\cmake.exe" -E copy_if_different C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/src/graphics/vertex.hlsl /Debug/vertex.hlsl
 if %errorlevel% neq 0 goto :cmEnd
-"D:\Program Files\CMake\bin\cmake.exe" -E copy_if_different C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/src/graphics/pixel.hlsl C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/build/bin/pixel.hlsl
+"D:\Program Files\CMake\bin\cmake.exe" -E copy_if_different C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/src/graphics/pixel.hlsl /Debug/pixel.hlsl
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -194,9 +194,9 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <PostBuildEvent>
       <Message>Copying shader files to output directory</Message>
       <Command>setlocal
-"D:\Program Files\CMake\bin\cmake.exe" -E copy_if_different C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/src/graphics/vertex.hlsl C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/build/bin/vertex.hlsl
+"D:\Program Files\CMake\bin\cmake.exe" -E copy_if_different C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/src/graphics/vertex.hlsl /Release/vertex.hlsl
 if %errorlevel% neq 0 goto :cmEnd
-"D:\Program Files\CMake\bin\cmake.exe" -E copy_if_different C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/src/graphics/pixel.hlsl C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/build/bin/pixel.hlsl
+"D:\Program Files\CMake\bin\cmake.exe" -E copy_if_different C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/src/graphics/pixel.hlsl /Release/pixel.hlsl
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -264,9 +264,9 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <PostBuildEvent>
       <Message>Copying shader files to output directory</Message>
       <Command>setlocal
-"D:\Program Files\CMake\bin\cmake.exe" -E copy_if_different C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/src/graphics/vertex.hlsl C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/build/bin/vertex.hlsl
+"D:\Program Files\CMake\bin\cmake.exe" -E copy_if_different C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/src/graphics/vertex.hlsl /MinSizeRel/vertex.hlsl
 if %errorlevel% neq 0 goto :cmEnd
-"D:\Program Files\CMake\bin\cmake.exe" -E copy_if_different C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/src/graphics/pixel.hlsl C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/build/bin/pixel.hlsl
+"D:\Program Files\CMake\bin\cmake.exe" -E copy_if_different C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/src/graphics/pixel.hlsl /MinSizeRel/pixel.hlsl
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -333,9 +333,9 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <PostBuildEvent>
       <Message>Copying shader files to output directory</Message>
       <Command>setlocal
-"D:\Program Files\CMake\bin\cmake.exe" -E copy_if_different C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/src/graphics/vertex.hlsl C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/build/bin/vertex.hlsl
+"D:\Program Files\CMake\bin\cmake.exe" -E copy_if_different C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/src/graphics/vertex.hlsl /RelWithDebInfo/vertex.hlsl
 if %errorlevel% neq 0 goto :cmEnd
-"D:\Program Files\CMake\bin\cmake.exe" -E copy_if_different C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/src/graphics/pixel.hlsl C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/build/bin/pixel.hlsl
+"D:\Program Files\CMake\bin\cmake.exe" -E copy_if_different C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/src/graphics/pixel.hlsl /RelWithDebInfo/pixel.hlsl
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone

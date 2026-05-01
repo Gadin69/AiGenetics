@@ -6,6 +6,7 @@
 #include <windows.h>
 #include <vector>
 #include <memory>
+#include <DirectXMath.h>
 
 // Forward declarations
 class GeneticsIntegration;
@@ -20,6 +21,18 @@ namespace Engine {
         class ProjectionMatrix;
     }
 }
+
+// Creature rendering data structure
+struct CreatureRenderData {
+    float scale;
+    DirectX::XMFLOAT3 position;
+    DirectX::XMFLOAT4 color;
+    
+    CreatureRenderData() 
+        : scale(1.0f), 
+          position(0.0f, 0.0f, 0.0f), 
+          color(1.0f, 1.0f, 1.0f, 1.0f) {}
+};
 
 class GraphicsEngine
 {
@@ -48,6 +61,11 @@ private:
     ID3D12Resource* m_vertexBuffer;
     D3D12_VERTEX_BUFFER_VIEW m_vertexBufferView;
     
+    // Instance buffer resources for creature rendering
+    ID3D12Resource* m_instanceBuffer;
+    D3D12_VERTEX_BUFFER_VIEW m_instanceBufferView;
+    UINT m_maxInstanceCount;
+    
     // Pipeline state object
     ID3D12PipelineState* m_pipelineState;
     
@@ -67,7 +85,8 @@ public:
     GraphicsEngine() : m_hWnd(nullptr), m_device(nullptr), m_adapter(nullptr), 
         m_factory(nullptr), m_commandQueue(nullptr), m_commandAllocator(nullptr), 
         m_commandList(nullptr), m_swapChain(nullptr), m_swapChain3(nullptr), m_frameIndex(0), 
-        m_rtvHeap(nullptr), m_rtvDescriptorSize(0), m_vertexBuffer(nullptr), m_pipelineState(nullptr), 
+        m_rtvHeap(nullptr), m_rtvDescriptorSize(0), m_vertexBuffer(nullptr), 
+        m_instanceBuffer(nullptr), m_maxInstanceCount(0), m_pipelineState(nullptr), 
         m_rootSignature(nullptr), m_vertexShaderBlob(nullptr), m_pixelShaderBlob(nullptr), 
         m_fenceEvent(nullptr), m_fence(nullptr), m_fenceValue(0) {}
     
@@ -77,6 +96,9 @@ public:
     void Update();
     void Render();
     void Render(std::unique_ptr<GeneticsIntegration>& geneticsIntegration, Engine::Rendering::BaseCameraController* camera = nullptr);
+    
+    // Render creatures with instanced rendering
+    void RenderCreatures(const std::vector<CreatureRenderData>& creatures, Engine::Rendering::BaseCameraController* camera = nullptr);
     
 private:
     bool InitializeDX12();
