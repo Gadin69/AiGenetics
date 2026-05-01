@@ -21,7 +21,7 @@ LRESULT CALLBACK Window::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM 
     return DefWindowProc(hWnd, message, wParam, lParam);
 }
 
-bool Window::Initialize(int width, int height, LPCSTR title)
+bool Window::Initialize(int width, int height, LPCWSTR title)
 {
     m_width = width;
     m_height = height;
@@ -33,7 +33,7 @@ bool Window::Initialize(int width, int height, LPCSTR title)
     wc.style = CS_HREDRAW | CS_VREDRAW;
     wc.lpfnWndProc = WndProc;
     wc.hInstance = m_hInstance;
-    wc.lpszClassName = "GeneticsGameWindowClass";
+    wc.lpszClassName = L"GeneticsGameWindowClass";
     
     if (!RegisterClassEx(&wc))
     {
@@ -41,7 +41,7 @@ bool Window::Initialize(int width, int height, LPCSTR title)
     }
     
     // Create window
-    m_hWnd = CreateWindowEx(
+    m_hWnd = CreateWindowExW(
         0,
         wc.lpszClassName,
         m_title,

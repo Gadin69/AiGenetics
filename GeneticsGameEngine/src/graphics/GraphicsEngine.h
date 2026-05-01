@@ -5,7 +5,6 @@
 #include <windows.h>
 #include <vector>
 #include <memory>
-#include <d3dx12.h>
 
 // Forward declarations
 class GeneticsIntegration;
@@ -24,7 +23,8 @@ private:
     ID3D12GraphicsCommandList* m_commandList;
     
     // Swap chain
-    IDXGISwapChain3* m_swapChain;
+    IDXGISwapChain1* m_swapChain;
+    IDXGISwapChain3* m_swapChain3;
     ID3D12Resource* m_renderTargets[2];
     UINT m_frameIndex;
     
@@ -36,7 +36,7 @@ private:
 public:
     GraphicsEngine() : m_hWnd(nullptr), m_device(nullptr), m_adapter(nullptr), 
         m_factory(nullptr), m_commandQueue(nullptr), m_commandAllocator(nullptr), 
-        m_commandList(nullptr), m_swapChain(nullptr), m_frameIndex(0), 
+        m_commandList(nullptr), m_swapChain(nullptr), m_swapChain3(nullptr), m_frameIndex(0), 
         m_fenceEvent(nullptr), m_fence(nullptr), m_fenceValue(0) {}
     
     bool Initialize(HWND hWnd);

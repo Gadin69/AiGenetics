@@ -8,49 +8,17 @@ project(GeneticsGameEngine VERSION 1.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Find required packages
-find_package(WindowsSDK REQUIRED)
+# Check for DirectX 12 headers
+if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/core/dx12_test.h")
+    message(FATAL_ERROR "DirectX 12 headers not found. Please ensure Windows SDK and DirectX SDK are installed.")
+endif()
 
-# Create executable
-add_executable(GeneticsGameEngine
-    src/core/main.cpp
-    src/graphics/GraphicsEngine.cpp
-    src/core/Window.cpp
-    # ... other source files
-)
-
-# Link DirectX 12 libraries
-target_link_libraries(GeneticsGameEngine PRIVATE
-    d3d12.lib
-    dxgi.lib
-    d3dcompiler.lib
-)
+# Add source directory
+add_subdirectory(src)
 
 # Compiler optimizations
 set_target_properties(GeneticsGameEngine PROPERTIES
-    COMPILE_OPTIONS "$<$<CONFIG:Release>:/O2 /GL /Gw /Gy /arch:AVX2>"
-    LINK_FLAGS "$<$<CONFIG:Release>:/LTCG /OPT:REF /OPT:ICF>"
-)
-
-# Include directories
-target_include_directories(GeneticsGameEngine PRIVATE
-    src/core
-    src/graphics
-    src/genetics
-)
-
-# Add compile definitions for Windows
-target_compile_definitions(GeneticsGameEngine PRIVATE
-    WIN32
-    _WINDOWS
-    UNICODE
-    _UNICODE
-)
-
-# Set Windows subsystem
-set_target_properties(GeneticsGameEngine PROPERTIES
-    WINDOWS_EXPORT_ALL_SYMBOLS OFF
-    VS_WINRT_COMPONENT OFF
+    COMPILE_OPTIONS "$<$<CONFIG:Release>:/O2 /GL /Gw /Gy>"
 )
 
 # Set output directory

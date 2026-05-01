@@ -9,10 +9,15 @@
 #include <thread>
 #include "dx12_test.h"
 
-// Forward declarations
-class GraphicsEngine;
-class Window;
-class GeneticsIntegration;
+// Include actual header files (not just forward declarations)
+#include "../graphics/GraphicsEngine.h"
+#include "../core/Window.h"
+#include "../genetics/GeneticsIntegration.h"
+
+// Forward declarations for classes that are included above
+// class GraphicsEngine;
+// class Window;
+// class GeneticsIntegration;
 
 class Application
 {
@@ -67,7 +72,7 @@ bool Application::Initialize()
 {
     // Create window
     m_window = std::make_unique<Window>(m_hInstance);
-    if (!m_window->Initialize(1920, 1080, "3D Genetics Game"))
+    if (!m_window->Initialize(1920, 1080, L"3D Genetics Game"))
     {
         return false;
     }

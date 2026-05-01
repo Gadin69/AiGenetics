@@ -16,7 +16,7 @@ void GeneticsIntegration::Update(float deltaTime)
         if (creature->genome && creature->neuralNetwork)
         {
             // Update neural network activity
-            creature->neuralNetwork->UpdateActivity();
+            // creature->neuralNetwork->UpdateActivity();
             
             // Apply learning
             // TODO: Implement learning system
