@@ -33,6 +33,13 @@ struct MovementParameters {
 // Forward declarations for C++ genetics classes
 struct GeneticsCreature;
 
+// Forward declarations for engine classes
+namespace Engine {
+    namespace Rendering {
+        class BaseCameraController;
+    }
+}
+
 class GeneticsIntegration
 {
 private:

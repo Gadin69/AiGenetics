@@ -14,11 +14,24 @@
 #include "../graphics/GraphicsEngine.h"
 #include "../core/Window.h"
 #include "../genetics/GeneticsIntegration.h"
+#include "../engine/rendering/camera/CameraSystem.h"
+#include "../engine/rendering/camera/OrbitCameraController.h"
+#include "../engine/rendering/camera/FirstPersonCameraController.h"
+#include "../engine/rendering/camera/CinematicCameraController.h"
+#include "../engine/rendering/culling/FrustumCuller.h"
+#include "../engine/rendering/culling/SpatialPartition.h"
+#include "../engine/rendering/lod/LODManager.h"
+#include "../engine/rendering/projection/ProjectionMatrix.h"
+#include "../engine/rendering/projection/ProjectionModes.h"
 
 // Forward declarations for classes that are included above
 // class GraphicsEngine;
 // class Window;
 // class GeneticsIntegration;
+// class CameraSystem;
+
+// Global camera system instance
+std::unique_ptr<Engine::Rendering::CameraSystem> g_cameraSystem;
 
 class Application
 {
@@ -27,6 +40,7 @@ private:
     std::unique_ptr<Window> m_window;
     std::unique_ptr<GraphicsEngine> m_graphicsEngine;
     std::unique_ptr<GeneticsIntegration> m_geneticsIntegration;
+    std::unique_ptr<Engine::Rendering::CameraSystem> m_cameraSystem;
     
     // FPS counter
     std::chrono::steady_clock::time_point m_lastFrameTime;
@@ -44,32 +58,34 @@ private:
     void UpdateFPS();
 };
 
-// WinMain entry point
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
+// Main entry point
+int main()
 {
-    // Allocate console for debug output
-    AllocConsole();
-    freopen("CONOUT$", "w", stdout);
-    freopen("CONOUT$", "w", stderr);
+    // No need for AllocConsole when using /SUBSYSTEM:CONSOLE
     
     try
     {
+        HINSTANCE hInstance = GetModuleHandle(nullptr);
         Application app(hInstance);
         
         if (!app.Initialize())
         {
             std::cerr << "Failed to initialize application!" << std::endl;
+            std::cerr.flush();
             return -1;
         }
         
         app.Run();
         app.Cleanup();
         
+        std::cout << "Application exited successfully." << std::endl;
+        std::cout.flush();
         return 0;
     }
     catch (const std::exception& e)
     {
         std::cerr << "Exception: " << e.what() << std::endl;
+        std::cerr.flush();
         return -1;
     }
 }
@@ -77,15 +93,18 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 bool Application::Initialize()
 {
     std::cout << "Initializing Application..." << std::endl;
+    std::cout.flush();
     
     // Create window
     m_window = std::make_unique<Window>(m_hInstance);
     if (!m_window->Initialize(800, 600, L"3D Genetics Game"))
     {
         std::cerr << "Failed to initialize window!" << std::endl;
+        std::cerr.flush();
         return false;
     }
     std::cout << "Window initialized successfully." << std::endl;
+    std::cout.flush();
     
     // Give window time to fully initialize
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -95,67 +114,123 @@ bool Application::Initialize()
     if (!m_graphicsEngine->Initialize(m_window->GetHwnd()))
     {
         std::cerr << "Failed to initialize graphics engine!" << std::endl;
+        std::cerr.flush();
         return false;
     }
     std::cout << "Graphics engine initialized successfully." << std::endl;
+    std::cout.flush();
     
     // Initialize genetics integration
     m_geneticsIntegration = std::make_unique<GeneticsIntegration>();
     if (!m_geneticsIntegration->Initialize())
     {
         std::cerr << "Failed to initialize genetics integration!" << std::endl;
+        std::cerr.flush();
         return false;
     }
     std::cout << "Genetics integration initialized successfully." << std::endl;
+    std::cout.flush();
     
     // Add a test creature
     m_geneticsIntegration->AddCreature("Chordata", "test_creature_001");
     std::cout << "Test creature added." << std::endl;
+    std::cout.flush();
+    
+    // Initialize camera system
+    std::cout << "Initializing camera system..." << std::endl;
+    std::cout.flush();
+    m_cameraSystem = std::make_unique<Engine::Rendering::CameraSystem>();
+    if (m_cameraSystem)
+    {
+        // Create orbit camera
+        auto orbitCamera = m_cameraSystem->CreateCamera<Engine::Rendering::OrbitCameraController>("orbit");
+        orbitCamera->SetTarget({0.0f, 0.0f, 0.0f});
+        orbitCamera->SetDistance(5.0f);
+        orbitCamera->SetRotation({0.0f, 0.0f, 0.0f});
+        m_cameraSystem->SetActiveCamera(orbitCamera);
+        std::cout << "Camera system initialized successfully." << std::endl;
+        std::cout.flush();
+    }
+    else
+    {
+        std::cerr << "Failed to initialize camera system!" << std::endl;
+        std::cerr.flush();
+        return false;
+    }
     
     // Initialize FPS counter
     m_lastFrameTime = std::chrono::steady_clock::now();
     
     std::cout << "Application initialization complete." << std::endl;
+    std::cout.flush();
     return true;
 }
 
 void Application::Run()
 {
-    MSG msg = {};
+    std::cout << "Starting message loop..." << std::endl;
+    std::cout.flush();
     
-    // Standard Windows message loop
-    while (GetMessage(&msg, nullptr, 0, 0))
+    MSG msg = {};
+    bool running = true;
+    
+    // Game loop using PeekMessage (non-blocking)
+    while (running)
     {
-        TranslateMessage(&msg);
-        DispatchMessage(&msg);
-        
-        // Handle our own messages and game logic
-        if (msg.message == WM_QUIT)
+        // Process all pending messages without blocking
+        while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
         {
-            break;
+            if (msg.message == WM_QUIT)
+            {
+                std::cout << "Received WM_QUIT, exiting..." << std::endl;
+                running = false;
+                break;
+            }
+            
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
         }
         
-        // Calculate delta time
-        auto now = std::chrono::steady_clock::now();
-        auto deltaTime = std::chrono::duration<float>(now - m_lastFrameTime).count();
-        m_lastFrameTime = now;
+        if (!running) break;
         
-        // Update systems
-        m_graphicsEngine->Update();
-        m_geneticsIntegration->Update(deltaTime);
+        float deltaTime = 0.0f;
         
-        // Render
-        m_graphicsEngine->Render();
-        m_geneticsIntegration->Render(m_graphicsEngine.get());
-        
-        // Update FPS counter
-        UpdateFPS();
+        try
+        {
+            // Calculate delta time
+            auto now = std::chrono::steady_clock::now();
+            deltaTime = std::chrono::duration<float>(now - m_lastFrameTime).count();
+            m_lastFrameTime = now;
+            
+            // Update systems
+            m_graphicsEngine->Update();
+            m_geneticsIntegration->Update(deltaTime);
+            
+            // Update camera system
+            if (m_cameraSystem)
+            {
+                m_cameraSystem->Update(deltaTime);
+            }
+            
+            // Render
+            m_graphicsEngine->Render();
+            m_geneticsIntegration->Render(m_graphicsEngine.get());
+            
+            // Update FPS counter
+            UpdateFPS();
+        }
+        catch (const std::exception& e)
+        {
+            std::cerr << "Exception during game loop: " << e.what() << std::endl;
+            std::cerr.flush();
+            break;
+        }
         
         // Cap frame rate at 60 FPS
         if (deltaTime < 1.0f/60.0f)
         {
             std::this_thread::sleep_for(std::chrono::microseconds(
-                static_cast<long long>((1.0f/60.0f - deltaTime) * 1000000.0f)));
+                static_cast<long long>((1.0f/60.0f - deltaTime) * 1000000.0f))); 
         }
     }
 }

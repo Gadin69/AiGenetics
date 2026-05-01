@@ -16,6 +16,13 @@ add_library(GeneticsIntegration STATIC
     ${GENETICS_HEADERS}
 )
 
+# Set MSVC runtime library
+if(MSVC)
+    set_target_properties(GeneticsIntegration PROPERTIES
+        MSVC_RUNTIME_LIBRARY "MultiThreadedDLL"
+    )
+endif()
+
 # Set compile options
 set_target_properties(GeneticsIntegration PROPERTIES
     CXX_STANDARD 20

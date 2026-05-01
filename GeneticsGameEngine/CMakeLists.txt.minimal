@@ -1,0 +1,50 @@
+# Minimum required version
+cmake_minimum_required(VERSION 3.25)
+
+# Project configuration
+project(GeneticsGameEngine VERSION 1.0 LANGUAGES CXX)
+
+# Set C++ standard
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# Create executable
+add_executable(GeneticsGameEngine
+    src/core/main.cpp
+    src/core/Window.cpp
+    src/graphics/GraphicsEngine.cpp
+    src/genetics/GeneticsIntegration.cpp
+)
+
+# Link DirectX 12 libraries
+target_link_libraries(GeneticsGameEngine PRIVATE
+    d3d12.lib
+    dxgi.lib
+    d3dcompiler.lib
+)
+
+# Include directories
+target_include_directories(GeneticsGameEngine PRIVATE
+    src/core
+    src/graphics
+    src/genetics
+)
+
+# Add compile definitions for Windows
+target_compile_definitions(GeneticsGameEngine PRIVATE
+    WIN32
+    _WINDOWS
+    UNICODE
+    _UNICODE
+    NOMINMAX
+)
+
+# Compiler optimizations
+set_target_properties(GeneticsGameEngine PROPERTIES
+    COMPILE_OPTIONS "$<$<CONFIG:Release>:/O2 /GL /Gw /Gy>"
+)
+
+# Set output directory
+set_target_properties(GeneticsGameEngine PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
+)

@@ -1,0 +1,10 @@
+^C:\USERS\TAKTIX\DESKTOP\CODINGAI\AIPROJECTS\3DGENETICS\GENETICSGAMEENGINE\BUILD\CMAKEFILES\D9F9B9B05F140D1264E74585BDA1AE22\GENERATE.STAMP.RULE
+setlocal
+"D:\Program Files\CMake\bin\cmake.exe" -SC:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine -BC:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/build --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/build/GeneticsGameEngine.sln
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

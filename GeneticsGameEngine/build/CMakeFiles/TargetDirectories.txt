@@ -1,0 +1,6 @@
+C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/build/CMakeFiles/ALL_BUILD.dir
+C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/build/CMakeFiles/ZERO_CHECK.dir
+C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/build/src/CMakeFiles/GeneticsGameEngine.dir
+C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/build/src/core/CMakeFiles/Core.dir
+C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/build/src/graphics/CMakeFiles/GraphicsEngine.dir
+C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/build/src/genetics/CMakeFiles/GeneticsIntegration.dir

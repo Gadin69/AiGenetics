@@ -2,6 +2,13 @@
 
 #include <windows.h>
 
+// Forward declarations for engine classes
+namespace Engine {
+    namespace Rendering {
+        class BaseCameraController;
+    }
+}
+
 class Window
 {
 private:

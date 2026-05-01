@@ -10,6 +10,17 @@
 // Forward declarations
 class GeneticsIntegration;
 
+// Forward declarations for engine classes to avoid circular dependencies
+namespace Engine {
+    namespace Rendering {
+        class BaseCameraController;
+        class FrustumCuller;
+        class SpatialPartition;
+        class LODManager;
+        class ProjectionMatrix;
+    }
+}
+
 class GraphicsEngine
 {
 private:
@@ -65,6 +76,7 @@ public:
     
     void Update();
     void Render();
+    void Render(std::unique_ptr<GeneticsIntegration>& geneticsIntegration, Engine::Rendering::BaseCameraController* camera = nullptr);
     
 private:
     bool InitializeDX12();

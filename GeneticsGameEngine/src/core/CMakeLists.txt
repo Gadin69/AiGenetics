@@ -17,6 +17,13 @@ add_library(Core STATIC
     ${CORE_HEADERS}
 )
 
+# Set MSVC runtime library
+if(MSVC)
+    set_target_properties(Core PROPERTIES
+        MSVC_RUNTIME_LIBRARY "MultiThreadedDLL"
+    )
+endif()
+
 # Set compile options
 set_target_properties(Core PROPERTIES
     CXX_STANDARD 20

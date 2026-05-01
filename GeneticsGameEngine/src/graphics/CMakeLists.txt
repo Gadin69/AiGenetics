@@ -16,6 +16,13 @@ add_library(GraphicsEngine STATIC
     ${GRAPHICS_HEADERS}
 )
 
+# Set MSVC runtime library
+if(MSVC)
+    set_target_properties(GraphicsEngine PROPERTIES
+        MSVC_RUNTIME_LIBRARY "MultiThreadedDLL"
+    )
+endif()
+
 # Link dependencies
 target_link_libraries(GraphicsEngine PRIVATE
     d3d12.lib

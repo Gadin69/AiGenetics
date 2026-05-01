@@ -277,11 +277,90 @@ void GraphicsEngine::Render()
     
     // Clear render target
     float clearColor[] = { 0.0f, 0.2f, 0.4f, 1.0f };
-        
+    
     // Get RTV handle
     D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = m_rtvHeap->GetCPUDescriptorHandleForHeapStart();
     rtvHandle.ptr += m_rtvDescriptorSize * m_frameIndex;
-        
+    
+    m_commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+    
+    // Set viewport and scissor rect
+    D3D12_VIEWPORT viewport = {};
+    viewport.TopLeftX = 0;
+    viewport.TopLeftY = 0;
+    viewport.Width = 800;
+    viewport.Height = 600;
+    viewport.MinDepth = 0.0f;
+    viewport.MaxDepth = 1.0f;
+    m_commandList->RSSetViewports(1, &viewport);
+    
+    D3D12_RECT scissorRect = {};
+    scissorRect.left = 0;
+    scissorRect.top = 0;
+    scissorRect.right = 800;
+    scissorRect.bottom = 600;
+    m_commandList->RSSetScissorRects(1, &scissorRect);
+    
+    // Set pipeline state and root signature
+    m_commandList->SetPipelineState(m_pipelineState);
+    m_commandList->SetGraphicsRootSignature(m_rootSignature);
+    
+    // Set vertex buffer
+    m_commandList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
+    
+    // Draw triangle
+    m_commandList->DrawInstanced(3, 1, 0, 0);
+    
+    // Transition back to present state
+    barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+    barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
+    m_commandList->ResourceBarrier(1, &barrier);
+    
+    // Close command list
+    m_commandList->Close();
+    
+    // Execute command list
+    ID3D12CommandList* ppCommandLists[] = { m_commandList };
+    m_commandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
+    
+    // Present
+    m_swapChain->Present(1, 0);
+    
+    // Move to next frame
+    MoveToNextFrame();
+}
+
+void GraphicsEngine::Render(std::unique_ptr<GeneticsIntegration>& geneticsIntegration, Engine::Rendering::BaseCameraController* camera)
+{
+    // Wait for previous frame
+    WaitForPreviousFrame();
+    
+    // Debug output
+    std::cout << "Rendering frame..." << std::endl;
+    
+    // Reset command allocator
+    m_commandAllocator->Reset();
+    
+    // Reset command list
+    m_commandList->Reset(m_commandAllocator, nullptr);
+    
+    // Set render target
+    D3D12_RESOURCE_BARRIER barrier = {};
+    barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+    barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+    barrier.Transition.pResource = m_renderTargets[m_frameIndex];
+    barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+    barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
+    barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+    m_commandList->ResourceBarrier(1, &barrier);
+    
+    // Clear render target
+    float clearColor[] = { 0.0f, 0.2f, 0.4f, 1.0f };
+    
+    // Get RTV handle
+    D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = m_rtvHeap->GetCPUDescriptorHandleForHeapStart();
+    rtvHandle.ptr += m_rtvDescriptorSize * m_frameIndex;
+    
     m_commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
     
     // Set viewport and scissor rect
