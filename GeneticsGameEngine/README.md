@@ -1,53 +1,61 @@
 # 3D Genetics Game Engine
 
-A high-performance DirectX 12 engine for the 3D Genetics Game with AAA optimizations focused on framerate.
+## Overview
 
-## Features
+This is a DirectX 12-based 3D genetics game engine that combines ARK-style breeding with Dragon Adventures genetics. The engine features:
 
-- **DirectX 12 Core**: Low-overhead graphics API for maximum performance
-- **60 FPS Target**: Optimized for stable 60 FPS at 1080p resolution
-- **Genetics Integration**: Seamless connection to your existing genetics framework
-- **AAA Optimizations**: Multi-threaded rendering, GPU memory management, and synchronization primitives
-- **Modular Architecture**: Clean separation of concerns with core, graphics, and genetics subsystems
+- OOP architecture with inheritance and polymorphism
+- Biological taxonomy-based class hierarchy (Chordata, Arthropoda, Mollusca)
+- Dynamic neural networks with hybrid growth triggers
+- Multi-gene interaction systems (epistasis, polygenic traits, regulatory genes)
+- Procedural mesh and movement generation synchronized through genetic data
+- AAA performance optimizations (multi-threaded rendering, GPU memory management)
 
-## Build Requirements
+## What the Application Does When It Opens
 
-- Visual Studio 2022 (C++ development tools)
-- Windows SDK 10.0.22621.0 or later
-- DirectX 12 Graphics SDK
-- CMake 3.25+
+When you run the executable (`GeneticsGameEngine.exe`), the application will:
 
-## Building
+1. **Open a window**: A 800x600 window titled "3D Genetics Game" will appear
+2. **Render a test scene**: A colored triangle will be rendered in the window
+3. **Stay open continuously**: The application will run indefinitely, processing Windows messages and rendering frames at 60 FPS
+4. **Display debug information**: FPS counter will be printed to the console every second
+5. **Show genetic integration**: A test creature "test_creature_001" from the "Chordata" class will be added to the genetics system
 
-1. Open Visual Studio 2022
-2. Load the `GeneticsGameEngine.sln` solution file
-3. Build the solution in Release configuration
-4. Run the executable
+## Building the Project
 
-## Project Structure
+### Prerequisites
+- Visual Studio 2022 with C++ development tools
+- Windows SDK (automatically installed with Visual Studio)
+- CMake 3.25 or later
 
-```
-/GeneticsGameEngine/
-├── /build/                # Build artifacts
-├── /src/
-│   ├── /core/            # Engine core (DX12, memory management)
-│   ├── /graphics/        # DX12 rendering pipeline
-│   ├── /genetics/        # Your existing genetics framework integration
-│   ├── /physics/         # Physics simulation
-│   └── /audio/           # Audio system
-├── /assets/              # 3D models, textures, shaders
-├── /shaders/             # HLSL shader files
-├── CMakeLists.txt
-└── GeneticsGameEngine.sln
+### Build Instructions
+
+**Using build.bat (Windows Command Prompt):**
+```cmd
+build.bat
 ```
 
-## Performance Monitoring
+**Using build.ps1 (PowerShell):**
+```powershell
+.uild.ps1
+```
 
-The engine includes built-in FPS counter that prints to console every second.
+**Manual build:**
+```cmd
+cd GeneticsGameEngine
+mkdir build
+cd build
+cmake -G "Visual Studio 17 2022" -A x64 ..
+msbuild GeneticsGameEngine.sln /p:Configuration=Release /p:Platform=x64
+```
 
-## Next Steps
+The executable will be located at `build\bin\Release\GeneticsGameEngine.exe`.
 
-- Add physics simulation for realistic creature movement
-- Implement audio system for environmental sounds
-- Add advanced rendering features (ray tracing, volumetric lighting)
-- Integrate with your existing genetics framework for full functionality
+## Running the Application
+
+After building, simply run:
+```cmd
+build\bin\Release\GeneticsGameEngine.exe
+```
+
+The application will open a window and render the 3D scene continuously.

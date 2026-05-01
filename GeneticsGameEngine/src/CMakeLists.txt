@@ -21,6 +21,10 @@ target_link_libraries(GeneticsGameEngine PRIVATE
     d3d12.lib
     dxgi.lib
     d3dcompiler.lib
+    # C++ runtime libraries
+    msvcrt.lib
+    vcruntime.lib
+    ucrt.lib
 )
 
 # Set compile options
@@ -59,9 +63,19 @@ if(MSVC)
     )
 endif()
 
+# Copy shader files to output directory
+add_custom_command(TARGET GeneticsGameEngine POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${CMAKE_CURRENT_SOURCE_DIR}/graphics/vertex.hlsl"
+        "${CMAKE_BINARY_DIR}/bin/vertex.hlsl"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${CMAKE_CURRENT_SOURCE_DIR}/graphics/pixel.hlsl"
+        "${CMAKE_BINARY_DIR}/bin/pixel.hlsl"
+    COMMENT "Copying shader files to output directory")
+
 # Set entry point
 if(MSVC)
     target_link_options(GeneticsGameEngine PRIVATE
-        $<$<CONFIG:Release>:/ENTRY:WinMainCRTStartup>
+        $<$<CONFIG:Release>:/ENTRY:WinMain>
     )
 endif()

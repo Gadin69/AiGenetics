@@ -23,8 +23,7 @@ set_target_properties(GeneticsGameEngine PROPERTIES
 
 # Set output directory
 set_target_properties(GeneticsGameEngine PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
-)
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 
 # Add precompiled headers if needed
 # target_precompile_headers(GeneticsGameEngine PRIVATE

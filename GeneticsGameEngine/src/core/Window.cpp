@@ -1,5 +1,6 @@
 #include "Window.h"
 #include <string>
+#include <iostream>
 
 // Global window procedure pointer for static callback
 LRESULT CALLBACK Window::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -23,6 +24,7 @@ LRESULT CALLBACK Window::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM 
 
 bool Window::Initialize(int width, int height, LPCWSTR title)
 {
+    std::cout << "Initializing window..." << std::endl;
     m_width = width;
     m_height = height;
     m_title = title;
@@ -37,8 +39,10 @@ bool Window::Initialize(int width, int height, LPCWSTR title)
     
     if (!RegisterClassEx(&wc))
     {
+        std::cerr << "Failed to register window class!" << std::endl;
         return false;
     }
+    std::cout << "Window class registered successfully." << std::endl;
     
     // Create window
     m_hWnd = CreateWindowExW(
@@ -56,12 +60,15 @@ bool Window::Initialize(int width, int height, LPCWSTR title)
     
     if (!m_hWnd)
     {
+        std::cerr << "Failed to create window!" << std::endl;
         return false;
     }
+    std::cout << "Window created successfully." << std::endl;
     
     ShowWindow(m_hWnd, SW_SHOW);
     UpdateWindow(m_hWnd);
     
+    std::cout << "Window shown and updated." << std::endl;
     return true;
 }
 
