@@ -22,9 +22,10 @@ VS_OUTPUT main(VS_INPUT input)
     VS_OUTPUT output;
     
     // Transform position: World -> View -> Projection -> Clip space
+    // DirectXMath creates matrices for column-vector math: mul(matrix, vector)
     float4 worldPos = float4(input.position.xyz, 1.0f);
-    float4 viewPos = mul(worldPos, viewMatrix);
-    output.position = mul(viewPos, projectionMatrix);
+    float4 viewPos = mul(viewMatrix, worldPos);
+    output.position = mul(projectionMatrix, viewPos);
     
     // Pass through color
     output.color = input.color;

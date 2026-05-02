@@ -34,8 +34,10 @@ public:
     // Override Update to implement orbit behavior
     void Update(float deltaTime) override {
         // Calculate position based on rotation and target
-        float pitch = GetRotation().x;
+        // Yaw (Y rotation) = horizontal orbit around Y axis
+        // Pitch (X rotation) = vertical angle from horizon
         float yaw = GetRotation().y;
+        float pitch = GetRotation().x;
             
         DirectX::XMFLOAT3 position;
         position.x = m_target.x + m_distance * cosf(pitch) * sinf(yaw);

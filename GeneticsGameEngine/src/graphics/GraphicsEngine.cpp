@@ -511,12 +511,12 @@ bool GraphicsEngine::CreateDepthBuffer()
     depthDesc.Height = m_height;
     depthDesc.DepthOrArraySize = 1;
     depthDesc.MipLevels = 1;
-    depthDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT; // Match PSO format
+    depthDesc.Format = DXGI_FORMAT_D32_FLOAT;
     depthDesc.SampleDesc = { 1, 0 };
     depthDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
     
     D3D12_CLEAR_VALUE clearValue = {};
-    clearValue.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+    clearValue.Format = DXGI_FORMAT_D32_FLOAT;
     clearValue.DepthStencil = { 1.0f, 0 };
     
     ThrowIfFailed(
@@ -533,7 +533,7 @@ bool GraphicsEngine::CreateDepthBuffer()
     
     // Create DSV
     D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
-    dsvDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+    dsvDesc.Format = DXGI_FORMAT_D32_FLOAT;
     dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
     dsvDesc.Flags = D3D12_DSV_FLAG_NONE;
     
@@ -617,10 +617,9 @@ bool GraphicsEngine::CompileShaders()
     // Compile vertex shader
     Microsoft::WRL::ComPtr<ID3DBlob> vertexError;
     UINT compileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
-        
-    // TEST: Use simple shader without camera transformation
+    
     HRESULT hr = D3DCompileFromFile(
-        L"vertex_simple.hlsl",
+        L"vertex.hlsl",
         nullptr,
         D3DCOMPILE_STANDARD_FILE_INCLUDE,
         "main",
@@ -675,10 +674,23 @@ bool GraphicsEngine::CreateRootSignature()
 {
     std::cout << "  Creating root signature..." << std::endl;
     
-    // Create empty root signature for test (no descriptors needed for simple shader)
+    // Create root signature with CBV descriptor table for camera constants
+    D3D12_DESCRIPTOR_RANGE cbvRange = {};
+    cbvRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
+    cbvRange.NumDescriptors = 1;
+    cbvRange.BaseShaderRegister = 0;
+    cbvRange.RegisterSpace = 0;
+    cbvRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+    
+    D3D12_ROOT_PARAMETER rootParam = {};
+    rootParam.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+    rootParam.DescriptorTable.NumDescriptorRanges = 1;
+    rootParam.DescriptorTable.pDescriptorRanges = &cbvRange;
+    rootParam.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+    
     D3D12_ROOT_SIGNATURE_DESC rootDesc = {};
-    rootDesc.NumParameters = 0;
-    rootDesc.pParameters = nullptr;
+    rootDesc.NumParameters = 1;
+    rootDesc.pParameters = &rootParam;
     rootDesc.NumStaticSamplers = 0;
     rootDesc.pStaticSamplers = nullptr;
     rootDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
@@ -713,7 +725,7 @@ bool GraphicsEngine::CreateRootSignature()
         "CreateRootSignature failed"
     );
     
-    std::cout << "  Root signature created successfully (empty for test)" << std::endl;
+    std::cout << "  Root signature created successfully (with CBV table)" << std::endl;
     return true;
 }
 
@@ -749,12 +761,12 @@ bool GraphicsEngine::CreatePipelineState()
     psoDesc.RasterizerState.FrontCounterClockwise = FALSE;
     psoDesc.RasterizerState.DepthClipEnable = TRUE;
     
-    // Depth/stencil state - DISABLED for testing
-    psoDesc.DepthStencilState.DepthEnable = FALSE;
+    // Depth/stencil state - ENABLED for 3D rendering
+    psoDesc.DepthStencilState.DepthEnable = TRUE;
     psoDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
     psoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
     psoDesc.DepthStencilState.StencilEnable = FALSE;
-    psoDesc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT; // More compatible format
+    psoDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
     
     // Blend state
     D3D12_RENDER_TARGET_BLEND_DESC rtBlendDesc = {};
@@ -793,14 +805,32 @@ bool GraphicsEngine::CreatePipelineState()
 
 bool GraphicsEngine::CreateVertexBuffer()
 {
-    std::cout << "  Creating vertex buffer (test triangle)..." << std::endl;
+    std::cout << "  Creating vertex buffer (3D pyramid)..." << std::endl;
     
-    // Define LARGE triangle vertices that cover most of the screen in clip space
+    // Define 3D pyramid vertices (4 faces, 12 vertices for proper normals)
+    // Consistent counter-clockwise winding for outward normals (when viewed from outside)
+    // Apex at TOP (Y=+1), base at BOTTOM (Y=-1)
     Vertex vertices[] =
     {
-        { { 0.0f, 0.8f, 0.0f }, { 1.0f, 0.0f, 0.0f, 1.0f } },   // Top - Red
-        { { 0.8f, -0.8f, 0.0f }, { 0.0f, 1.0f, 0.0f, 1.0f } },  // Bottom Right - Green
-        { { -0.8f, -0.8f, 0.0f }, { 0.0f, 0.0f, 1.0f, 1.0f } }  // Bottom Left - Blue
+        // Front face (looking from +Z) - CCW: Top, Bottom-Right, Bottom-Left
+        { { 0.0f, 1.0f, 0.0f }, { 1.0f, 0.0f, 0.0f, 1.0f } },   // Apex TOP - Red
+        { { 1.0f, -1.0f, 1.0f }, { 0.0f, 0.0f, 1.0f, 1.0f } },   // Bottom Right - Blue
+        { { -1.0f, -1.0f, 1.0f }, { 0.0f, 1.0f, 0.0f, 1.0f } },  // Bottom Left - Green
+        
+        // Right face (looking from +X) - CCW: Top, Bottom-Back, Bottom-Front
+        { { 0.0f, 1.0f, 0.0f }, { 1.0f, 1.0f, 0.0f, 1.0f } },    // Apex TOP - Yellow
+        { { 1.0f, -1.0f, -1.0f }, { 0.0f, 1.0f, 1.0f, 1.0f } },  // Bottom Back - Cyan
+        { { 1.0f, -1.0f, 1.0f }, { 1.0f, 0.0f, 1.0f, 1.0f } },   // Bottom Front - Magenta
+        
+        // Back face (looking from -Z) - CCW: Top, Bottom-Left, Bottom-Right
+        { { 0.0f, 1.0f, 0.0f }, { 1.0f, 0.5f, 0.0f, 1.0f } },    // Apex TOP - Orange
+        { { -1.0f, -1.0f, -1.0f }, { 0.0f, 0.5f, 1.0f, 1.0f } }, // Bottom Left - Sky Blue
+        { { 1.0f, -1.0f, -1.0f }, { 0.5f, 1.0f, 0.0f, 1.0f } },  // Bottom Right - Lime
+        
+        // Left face (looking from -X) - CCW: Top, Bottom-Front, Bottom-Back
+        { { 0.0f, 1.0f, 0.0f }, { 0.5f, 0.0f, 1.0f, 1.0f } },    // Apex TOP - Purple
+        { { -1.0f, -1.0f, 1.0f }, { 0.0f, 1.0f, 0.5f, 1.0f } },  // Bottom Front - Mint
+        { { -1.0f, -1.0f, -1.0f }, { 1.0f, 0.0f, 0.5f, 1.0f } }  // Bottom Back - Pink
     };
     
     const UINT64 bufferSize = sizeof(vertices);
@@ -861,7 +891,7 @@ bool GraphicsEngine::CreateGroundPlane()
         {
             vertices[index].position = DirectX::XMFLOAT3(
                 -gridSize / 2.0f + x * step,
-                0.0f,
+                -1.5f,  // Ground plane below pyramid base (pyramid base is at Y=-1)
                 -gridSize / 2.0f + z * step
             );
             
@@ -1063,9 +1093,9 @@ void GraphicsEngine::PopulateCommandList(Engine::Rendering::BaseCameraController
     // Set viewport and scissor
     D3D12_VIEWPORT viewport = {};
     viewport.TopLeftX = 0.0f;
-    viewport.TopLeftY = 0.0f;
+    viewport.TopLeftY = static_cast<float>(m_height);  // Flip Y-axis: start from bottom
     viewport.Width = static_cast<float>(m_width);
-    viewport.Height = static_cast<float>(m_height);
+    viewport.Height = -static_cast<float>(m_height);  // Negative height flips coordinate system
     viewport.MinDepth = 0.0f;
     viewport.MaxDepth = 1.0f;
     
@@ -1089,18 +1119,21 @@ void GraphicsEngine::PopulateCommandList(Engine::Rendering::BaseCameraController
     const FLOAT clearColor[] = { 0.0f, 0.2f, 0.4f, 1.0f };
     m_commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
     
-    // TEMPORARILY DISABLED: Depth buffer clear to test if it's causing GPU rejection
-    // m_commandList->ClearDepthStencilView(
-    //     m_dsvHeap->GetCPUDescriptorHandleForHeapStart(),
-    //     D3D12_CLEAR_FLAG_DEPTH,
-    //     1.0f,
-    //     0,
-    //     0,
-    //     nullptr
-    // );
+    // Clear depth buffer
+    m_commandList->ClearDepthStencilView(
+        m_dsvHeap->GetCPUDescriptorHandleForHeapStart(),
+        D3D12_CLEAR_FLAG_DEPTH,
+        1.0f,
+        0,
+        0,
+        nullptr
+    );
     
     // CRITICAL: Bind render targets for drawing (THIS WAS MISSING!)
-    m_commandList->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
+    CD3DX12_CPU_DESCRIPTOR_HANDLE dsvHandle(
+        m_dsvHeap->GetCPUDescriptorHandleForHeapStart()
+    );
+    m_commandList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
     
     // Set pipeline state
     m_commandList->SetGraphicsRootSignature(m_rootSignature.Get());
@@ -1109,20 +1142,20 @@ void GraphicsEngine::PopulateCommandList(Engine::Rendering::BaseCameraController
     // Update and set camera constant buffer
     UpdateCameraConstantBuffer(camera);
     
-    // TEMPORARILY DISABLED: Descriptor heap setting to test basic rendering
-    // ID3D12DescriptorHeap* ppHeaps[] = { m_cbvSrvUavHeap.Get() };
-    // m_commandList->SetDescriptorHeaps(1, ppHeaps);
-    // m_commandList->SetGraphicsRootDescriptorTable(
-    //     0,
-    //     m_cbvSrvUavHeap->GetGPUDescriptorHandleForHeapStart()
-    // );
+    // Set descriptor heap and bind camera CBV
+    ID3D12DescriptorHeap* ppHeaps[] = { m_cbvSrvUavHeap.Get() };
+    m_commandList->SetDescriptorHeaps(1, ppHeaps);
+    m_commandList->SetGraphicsRootDescriptorTable(
+        0,
+        m_cbvSrvUavHeap->GetGPUDescriptorHandleForHeapStart()
+    );
     
     // Set primitive topology
     m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     
-    // Draw test triangle
+    // Draw 3D pyramid (4 faces = 12 vertices)
     m_commandList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
-    m_commandList->DrawInstanced(3, 1, 0, 0);
+    m_commandList->DrawInstanced(12, 1, 0, 0);
     
     // Draw ground plane
     m_commandList->IASetVertexBuffers(0, 1, &m_groundVertexBufferView);

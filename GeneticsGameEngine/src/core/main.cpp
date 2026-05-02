@@ -138,11 +138,11 @@ bool Application::Initialize()
     m_cameraSystem = std::make_unique<Engine::Rendering::CameraSystem>();
     if (m_cameraSystem)
     {
-        // Create orbit camera
+        // Switch back to orbit camera to verify rendering works
         auto orbitCamera = m_cameraSystem->CreateCamera<Engine::Rendering::OrbitCameraController>("orbit");
         orbitCamera->SetTarget({0.0f, 0.0f, 0.0f});
-        orbitCamera->SetDistance(15.0f);
-        orbitCamera->SetRotation({0.5f, 0.8f, 0.0f}); // Pitch up ~30 degrees, yaw for better angle
+        orbitCamera->SetDistance(20.0f);
+        orbitCamera->SetRotation({0.8f, 0.0f, 0.0f});
         m_cameraSystem->SetActiveCamera(orbitCamera);
         
         // Pass camera to window for input handling
@@ -213,13 +213,7 @@ void Application::Run()
             }
             
             // Render everything in one pass
-            static int frameCount = 0;
-            if (frameCount == 0) std::cout << "About to call Render() - Frame 0" << std::endl;
-            
             m_graphicsEngine->Render(m_geneticsIntegration, m_cameraSystem ? m_cameraSystem->GetActiveCamera() : nullptr);
-            
-            if (frameCount == 0) std::cout << "Render() completed - Frame 0" << std::endl;
-            frameCount++;
             
             // Update FPS counter
             UpdateFPS();

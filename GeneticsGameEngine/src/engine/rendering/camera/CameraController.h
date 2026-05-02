@@ -173,11 +173,18 @@ private:
         // Create view matrix
         DirectX::XMFLOAT3 forward = GetForwardVector();
         DirectX::XMFLOAT3 up = GetUpVector();
+        
+        // Calculate look-at target position (camera position + forward direction)
+        DirectX::XMFLOAT3 lookAtTarget;
+        lookAtTarget.x = m_position.x + forward.x;
+        lookAtTarget.y = m_position.y + forward.y;
+        lookAtTarget.z = m_position.z + forward.z;
+        
         DirectX::XMStoreFloat4x4(
             &m_viewMatrix,
             DirectX::XMMatrixLookAtLH(
                 DirectX::XMLoadFloat3(&m_position),
-                DirectX::XMLoadFloat3(&forward),
+                DirectX::XMLoadFloat3(&lookAtTarget),
                 DirectX::XMLoadFloat3(&up)
             )
         );
