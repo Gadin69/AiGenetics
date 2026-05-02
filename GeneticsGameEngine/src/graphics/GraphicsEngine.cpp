@@ -1140,45 +1140,39 @@ void GraphicsEngine::PopulateCommandList(Engine::Rendering::BaseCameraController
 
 void GraphicsEngine::WaitForPreviousFrame()
 {
-    // Signal and wait
-    const UINT64 fenceValue = m_fenceValues[m_frameIndex];
+    // Wait for the GPU to finish with the command allocator for this frame
+    const UINT64 fenceToWaitFor = m_fenceValues[m_frameIndex];
     
-    ThrowIfFailed(
-        m_commandQueue->Signal(m_fence.Get(), fenceValue),
-        "Signal fence failed"
-    );
-    
-    m_fenceValues[m_frameIndex]++;
-    
-    if (m_fence->GetCompletedValue() < m_fenceValues[m_frameIndex])
+    if (m_fence->GetCompletedValue() < fenceToWaitFor)
     {
         ThrowIfFailed(
-            m_fence->SetEventOnCompletion(m_fenceValues[m_frameIndex], m_fenceEvent),
+            m_fence->SetEventOnCompletion(fenceToWaitFor, m_fenceEvent),
             "SetEventOnCompletion failed"
         );
         
-        // Wait with timeout to prevent infinite hang
-        DWORD result = WaitForSingleObject(m_fenceEvent, 5000);
+        // Wait for GPU to complete (with timeout to detect issues)
+        DWORD result = WaitForSingleObject(m_fenceEvent, 1000);
         if (result == WAIT_TIMEOUT)
         {
-            std::cerr << "Warning: GPU fence timeout!" << std::endl;
+            std::cerr << "GPU fence timeout waiting for value " << fenceToWaitFor 
+                     << " (completed: " << m_fence->GetCompletedValue() << ")" << std::endl;
         }
     }
     
-    // Update frame index
+    // Update frame index to the current back buffer
     m_frameIndex = m_swapChain->GetCurrentBackBufferIndex();
 }
 
 void GraphicsEngine::MoveToNextFrame()
 {
-    // Signal fence for current frame
-    const UINT64 currentFenceValue = m_fenceValues[m_frameIndex];
+    // Assign a new fence value to this frame and signal it
+    const UINT64 newFenceValue = m_fenceValues[m_frameIndex] + 1;
     
     ThrowIfFailed(
-        m_commandQueue->Signal(m_fence.Get(), currentFenceValue),
+        m_commandQueue->Signal(m_fence.Get(), newFenceValue),
         "Signal fence (MoveToNextFrame) failed"
     );
     
-    // Update fence value for next use
-    m_fenceValues[m_frameIndex] = currentFenceValue + 1;
+    // Update fence value for next time we use this frame
+    m_fenceValues[m_frameIndex] = newFenceValue;
 }
