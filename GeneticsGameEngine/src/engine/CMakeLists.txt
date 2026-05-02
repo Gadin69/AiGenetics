@@ -19,8 +19,8 @@ set(ENGINE_HEADERS
     rendering/lod/LODLevel.h
     rendering/projection/ProjectionMatrix.h
     rendering/projection/ProjectionModes.h
-    genetics/genome/Gene.h
     genetics/genome/Chromosome.h
+    genetics/genome/Gene.h
     genetics/genome/Genome.h
     genetics/taxonomy/Organism.h
     genetics/taxonomy/Animal.h
@@ -29,11 +29,8 @@ set(ENGINE_HEADERS
     genetics/taxonomy/Mollusca.h
     genetics/expression/ExpressionRules.h
     genetics/expression/GeneticExpression.h
-    genetics/expression/GeneticExpression.cpp
     genetics/breeding/BreedingSystem.h
-    genetics/breeding/BreedingSystem.cpp
     genetics/breeding/MutationEngine.h
-    genetics/breeding/MutationEngine.cpp
 )
 
 # Create engine library
