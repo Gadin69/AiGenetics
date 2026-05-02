@@ -88,11 +88,7 @@ public:
         m_rotation.y += yaw;
         m_rotation.x += pitch;
         
-        // Clamp pitch to avoid flipping
-        float minPitch = -DirectX::XM_PIDIV2 + 0.01f;
-        float maxPitch = DirectX::XM_PIDIV2 - 0.01f;
-        if (m_rotation.x < minPitch) m_rotation.x = minPitch;
-        if (m_rotation.x > maxPitch) m_rotation.x = maxPitch;
+        // No pitch clamping - allow unrestricted rotation
         
         m_matricesDirty = true;
     }
@@ -131,7 +127,7 @@ protected:
         
         DirectX::XMFLOAT3 forward;
         forward.x = cosf(pitch) * sinf(yaw);
-        forward.y = sinf(pitch);
+        forward.y = -sinf(pitch);  // Negate Y to match DirectX coordinate system
         forward.z = cosf(pitch) * cosf(yaw);
         
         return forward;

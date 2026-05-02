@@ -26,6 +26,23 @@ LRESULT CALLBACK Window::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM 
     return DefWindowProc(hWnd, message, wParam, lParam);
 }
 
+void Window::ProcessKeyboardInput(float deltaTime)
+{
+    if (!m_camera)
+        return;
+    
+    float moveSpeed = 10.0f * deltaTime;  // Units per second
+    
+    if (m_keyW)
+        m_camera->MoveForward(moveSpeed);
+    if (m_keyS)
+        m_camera->MoveForward(-moveSpeed);
+    if (m_keyA)
+        m_camera->MoveRight(-moveSpeed);
+    if (m_keyD)
+        m_camera->MoveRight(moveSpeed);
+}
+
 bool Window::Initialize(int width, int height, LPCWSTR title)
 {
     std::cout << "Initializing window..." << std::endl;
@@ -122,7 +139,7 @@ LRESULT Window::HandleMessage(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPa
                 
                 // Rotate camera based on mouse movement
                 float sensitivity = 0.005f;
-                m_camera->Rotate(deltaX * sensitivity, -deltaY * sensitivity);
+                m_camera->Rotate(deltaX * sensitivity, deltaY * sensitivity);
                 
                 m_lastMouseX = currentX;
                 m_lastMouseY = currentY;
@@ -149,32 +166,24 @@ LRESULT Window::HandleMessage(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPa
             break;
         
         case WM_KEYDOWN:
-            // Handle keyboard input for camera movement
-            if (m_camera)
+            // Track key states for continuous movement
+            switch (wParam)
             {
-                float moveSpeed = 0.5f;
-                
-                switch (wParam)
-                {
-                    case 'W':
-                        m_camera->MoveForward(moveSpeed);
-                        break;
-                    case 'S':
-                        m_camera->MoveForward(-moveSpeed);
-                        break;
-                    case 'A':
-                        m_camera->MoveRight(-moveSpeed);
-                        break;
-                    case 'D':
-                        m_camera->MoveRight(moveSpeed);
-                        break;
-                    case 'Q':
-                        m_camera->MoveUp(-moveSpeed);
-                        break;
-                    case 'E':
-                        m_camera->MoveUp(moveSpeed);
-                        break;
-                }
+                case 'W': m_keyW = true; break;
+                case 'S': m_keyS = true; break;
+                case 'A': m_keyA = true; break;
+                case 'D': m_keyD = true; break;
+            }
+            break;
+        
+        case WM_KEYUP:
+            // Reset key states
+            switch (wParam)
+            {
+                case 'W': m_keyW = false; break;
+                case 'S': m_keyS = false; break;
+                case 'A': m_keyA = false; break;
+                case 'D': m_keyD = false; break;
             }
             break;
         

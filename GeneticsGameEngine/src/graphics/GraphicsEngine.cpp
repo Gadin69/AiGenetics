@@ -1093,9 +1093,9 @@ void GraphicsEngine::PopulateCommandList(Engine::Rendering::BaseCameraController
     // Set viewport and scissor
     D3D12_VIEWPORT viewport = {};
     viewport.TopLeftX = 0.0f;
-    viewport.TopLeftY = static_cast<float>(m_height);  // Flip Y-axis: start from bottom
+    viewport.TopLeftY = 0.0f;
     viewport.Width = static_cast<float>(m_width);
-    viewport.Height = -static_cast<float>(m_height);  // Negative height flips coordinate system
+    viewport.Height = static_cast<float>(m_height);
     viewport.MinDepth = 0.0f;
     viewport.MaxDepth = 1.0f;
     

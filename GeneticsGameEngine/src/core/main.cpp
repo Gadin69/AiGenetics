@@ -138,15 +138,15 @@ bool Application::Initialize()
     m_cameraSystem = std::make_unique<Engine::Rendering::CameraSystem>();
     if (m_cameraSystem)
     {
-        // Switch back to orbit camera to verify rendering works
-        auto orbitCamera = m_cameraSystem->CreateCamera<Engine::Rendering::OrbitCameraController>("orbit");
-        orbitCamera->SetTarget({0.0f, 0.0f, 0.0f});
-        orbitCamera->SetDistance(20.0f);
-        orbitCamera->SetRotation({0.8f, 0.0f, 0.0f});
-        m_cameraSystem->SetActiveCamera(orbitCamera);
+        // Create FPS camera with WASD + mouse controls
+        auto fpsCamera = m_cameraSystem->CreateCamera<Engine::Rendering::FirstPersonCameraController>("fps");
+        fpsCamera->SetPosition({0.0f, 2.0f, 10.0f});  // Start elevated and back
+        fpsCamera->SetRotation({0.0f, 0.0f, 0.0f});   // Looking straight
+        fpsCamera->SetSensitivity(0.002f);             // Mouse sensitivity
+        m_cameraSystem->SetActiveCamera(fpsCamera);
         
         // Pass camera to window for input handling
-        m_window->SetCamera(orbitCamera);
+        m_window->SetCamera(fpsCamera);
         
         std::cout << "Camera system initialized successfully." << std::endl;
         std::cout.flush();
@@ -205,6 +205,12 @@ void Application::Run()
             // Update systems
             m_graphicsEngine->Update();
             m_geneticsIntegration->Update(deltaTime);
+            
+            // Process keyboard input for camera movement
+            if (m_window)
+            {
+                m_window->ProcessKeyboardInput(deltaTime);
+            }
             
             // Update camera system
             if (m_cameraSystem)
