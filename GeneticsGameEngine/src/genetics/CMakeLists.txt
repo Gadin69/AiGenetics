@@ -34,6 +34,11 @@ target_include_directories(GeneticsIntegration PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
+# Link procedural library
+target_link_libraries(GeneticsIntegration PRIVATE
+    Procedural
+)
+
 # Add compile definitions for Windows
 target_compile_definitions(GeneticsIntegration PRIVATE
     WIN32

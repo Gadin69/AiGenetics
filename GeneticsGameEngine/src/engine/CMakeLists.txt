@@ -65,3 +65,6 @@ set_target_properties(Engine PROPERTIES
     CXX_STANDARD 20
     CXX_STANDARD_REQUIRED ON
 )
+
+# Add procedural generation subdirectory
+add_subdirectory(procedural)

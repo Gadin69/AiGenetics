@@ -36,9 +36,19 @@ set_target_properties(GraphicsEngine PROPERTIES
     CXX_STANDARD_REQUIRED ON
 )
 
+# Enable /showIncludes to debug circular dependencies
+if(MSVC)
+    target_compile_options(GraphicsEngine PRIVATE "/showIncludes")
+endif()
+
 # Include directories
 target_include_directories(GraphicsEngine PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
+# Link procedural library
+target_link_libraries(GraphicsEngine PRIVATE
+    Procedural
 )
 
 # Add compile definitions for Windows

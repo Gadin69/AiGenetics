@@ -161,7 +161,21 @@ bool Application::Initialize()
     // Initialize FPS counter
     m_lastFrameTime = std::chrono::steady_clock::now();
     
-    std::cout << "Application initialization complete." << std::endl;
+    // Phase 3: Generate creature meshes from genetics
+    std::cout << "\n=== Phase 3: Procedural Mesh Generation ===" << std::endl;
+    try {
+        m_geneticsIntegration->GenerateCreatureMeshes(
+            m_graphicsEngine->GetDevice(),
+            m_graphicsEngine->GetCommandList()
+        );
+        std::cout << "Application initialization complete." << std::endl;
+    } catch (const std::exception& e) {
+        std::cerr << "Exception during mesh generation: " << e.what() << std::endl;
+        return false;
+    } catch (...) {
+        std::cerr << "Unknown exception during mesh generation!" << std::endl;
+        return false;
+    }
     std::cout.flush();
     return true;
 }

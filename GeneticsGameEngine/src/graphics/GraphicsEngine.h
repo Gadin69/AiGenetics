@@ -51,6 +51,10 @@ public:
 
     // Update
     void Update();
+    
+    // Getters for Phase 3 integration
+    ID3D12Device* GetDevice() const { return m_device.Get(); }
+    ID3D12GraphicsCommandList* GetCommandList() const { return m_commandList.Get(); }
 
 private:
     // Core DX12 objects (using ComPtr for automatic reference counting)

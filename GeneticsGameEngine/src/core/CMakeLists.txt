@@ -35,6 +35,11 @@ target_include_directories(Core PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
+# Link procedural library
+target_link_libraries(Core PRIVATE
+    Procedural
+)
+
 # Add compile definitions for Windows
 target_compile_definitions(Core PRIVATE
     WIN32

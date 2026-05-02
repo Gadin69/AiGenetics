@@ -2,6 +2,7 @@
 #include "../graphics/GraphicsEngine.h"
 #include <iostream>
 #include <DirectXMath.h>
+#include <chrono>
 
 namespace Genetics = Engine::Genetics;
 namespace Taxonomy = Engine::Genetics::Taxonomy;
@@ -41,6 +42,44 @@ bool GeneticsIntegration::Initialize()
     std::cout.flush();
     
     return true;
+}
+
+// Phase 3: Generate creature meshes from genetics
+void GeneticsIntegration::GenerateCreatureMeshes(ID3D12Device* device, ID3D12GraphicsCommandList* commandList) {
+    std::cout << "\n=== Phase 3: Generating Creature Meshes ==="  << std::endl;
+    
+    // Initialize mesh renderer if not already done
+    if (!m_meshRenderer) {
+        m_meshRenderer = std::make_unique<Engine::Procedural::Mesh::ProceduralMeshRenderer>();
+        if (!m_meshRenderer->Initialize(device)) {
+            std::cerr << "Failed to initialize procedural mesh renderer!" << std::endl;
+            return;
+        }
+        std::cout << "Procedural mesh renderer initialized." << std::endl;
+    }
+    
+    // Clear existing meshes
+    m_creatureMeshes.clear();
+    
+    // Generate mesh for each organism
+    float xPos = -3.0f;
+    for (size_t i = 0; i < m_organisms.size(); ++i) {
+        try {
+            std::cout << "  Generating mesh for organism " << i << "/" << m_organisms.size() << "..." << std::endl;
+            CreatureMeshData meshData = GenerateMeshForOrganism(m_organisms[i].get(), static_cast<int>(i));
+            meshData.position = DirectX::XMFLOAT3(xPos, 0.0f, 0.0f);
+            m_creatureMeshes.push_back(meshData);
+            std::cout << "  Mesh " << i << " generated successfully." << std::endl;
+            xPos += 4.0f; // Space creatures apart
+        } catch (const std::exception& e) {
+            std::cerr << "  ERROR generating mesh for organism " << i << ": " << e.what() << std::endl;
+            // Continue with next organism instead of crashing
+        } catch (...) {
+            std::cerr << "  UNKNOWN ERROR generating mesh for organism " << i << std::endl;
+        }
+    }
+    
+    std::cout << "Generated " << m_creatureMeshes.size() << " creature meshes." << std::endl;
 }
 
 void GeneticsIntegration::CreateSampleCreatures()
@@ -127,10 +166,94 @@ void GeneticsIntegration::Update(float deltaTime)
     }
 }
 
-void GeneticsIntegration::Render(GraphicsEngine* graphicsEngine)
+// Phase 3: Generate mesh for a single organism
+CreatureMeshData GeneticsIntegration::GenerateMeshForOrganism(
+    const Engine::Genetics::Taxonomy::Organism* organism, int index) 
 {
-    // TEMPORARILY DISABLED: Creature rendering pending full implementation
-    // The basic rendering pipeline is being tested first
+    std::cout << "    GenerateMeshForOrganism called for " << organism->GetID() << std::endl;
+    CreatureMeshData result;
+    result.creatureID = organism->GetID();
+    result.scale = organism->GetScale();
+    result.color = GetColorFromIndex(organism->GetColorIndex());
+    result.currentLOD = 0;
+    
+    std::cout << "    Setting up creature parameters..." << std::endl;
+    
+    // Step 1: Map genome to creature parameters
+    // (Using simplified mapping since we don't have direct genome access)
+    Engine::Procedural::Generation::CreatureParams params;
+    params.scaleFactor = organism->GetScale();
+    params.colorPaletteIndex = organism->GetColorIndex();
+    params.limbCount = 4; // Default
+    params.roughness = 0.5f;
+    params.metallic = 0.3f;
+    
+    // Set taxonomy-specific parameters
+    auto chordata = dynamic_cast<const Engine::Genetics::Taxonomy::Chordata*>(organism);
+    auto arthropoda = dynamic_cast<const Engine::Genetics::Taxonomy::Arthropoda*>(organism);
+    auto mollusca = dynamic_cast<const Engine::Genetics::Taxonomy::Mollusca*>(organism);
+    
+    if (chordata) {
+        params.taxonomyType = 0; // Chordata
+        params.limbCount = chordata->GetLimbCount();
+        params.bodyCenter = DirectX::XMFLOAT3(0, 1.0f, 0);
+        params.bodyRadii = DirectX::XMFLOAT3(0.5f * params.scaleFactor, 1.0f * params.scaleFactor, 0.5f * params.scaleFactor);
+        params.headCenter = DirectX::XMFLOAT3(0, 1.8f * params.scaleFactor, 0);
+        params.headRadius = 0.3f * params.scaleFactor;
+    } else if (arthropoda) {
+        params.taxonomyType = 1; // Arthropoda
+        params.limbCount = arthropoda->GetLimbCount();
+        params.bodyCenter = DirectX::XMFLOAT3(0, 0.5f, 0);
+        params.bodyRadii = DirectX::XMFLOAT3(0.6f * params.scaleFactor, 0.4f * params.scaleFactor, 0.8f * params.scaleFactor);
+        params.headCenter = DirectX::XMFLOAT3(0, 0.9f * params.scaleFactor, 0);
+        params.headRadius = 0.25f * params.scaleFactor;
+    } else if (mollusca) {
+        params.taxonomyType = 2; // Mollusca
+        params.limbCount = mollusca->GetLimbCount();
+        params.bodyCenter = DirectX::XMFLOAT3(0, 0.6f, 0);
+        params.bodyRadii = DirectX::XMFLOAT3(0.7f * params.scaleFactor, 0.5f * params.scaleFactor, 0.7f * params.scaleFactor);
+        params.headCenter = DirectX::XMFLOAT3(0, 1.2f * params.scaleFactor, 0);
+        params.headRadius = 0.35f * params.scaleFactor;
+    } else {
+        params.taxonomyType = 0; // Default to Chordata
+        params.bodyCenter = DirectX::XMFLOAT3(0, 1.0f, 0);
+        params.bodyRadii = DirectX::XMFLOAT3(0.5f * params.scaleFactor, 1.0f * params.scaleFactor, 0.5f * params.scaleFactor);
+        params.headCenter = DirectX::XMFLOAT3(0, 1.8f * params.scaleFactor, 0);
+        params.headRadius = 0.3f * params.scaleFactor;
+    }
+    
+    // Step 2: Generate voxel grid with scalar field
+    std::cout << "    Allocating voxel grid..." << std::endl;
+    int gridSize = 64; // Medium resolution
+    Engine::Procedural::Voxel::VoxelGrid grid;
+    grid.AllocateGrid(gridSize, gridSize, gridSize, 0.05f);
+    
+    std::cout << "    Generating scalar field..." << std::endl;
+    m_scalarFieldGenerator.GenerateField(grid, params);
+    
+    // Step 3: Run marching cubes to extract mesh
+    std::cout << "    Running marching cubes..." << std::endl;
+    float isovalue = 0.5f;
+    result.mesh = m_marchingCubes.GenerateMesh(grid, isovalue);
+    
+    std::cout << "    Mesh extracted: " << result.mesh.vertices.size() << " vertices, " << result.mesh.indices.size() / 3 << " triangles" << std::endl;
+    
+    // Step 4: Optimize mesh if needed
+    uint32_t targetTriangles = 10000;
+    if (result.mesh.indices.size() / 3 > targetTriangles) {
+        std::cout << "    Optimizing mesh (target: " << targetTriangles << " triangles)..." << std::endl;
+        result.mesh = m_meshOptimizer.SimplifyMesh(result.mesh, targetTriangles);
+        std::cout << "    Mesh optimized: " << result.mesh.vertices.size() << " vertices, " << result.mesh.indices.size() / 3 << " triangles" << std::endl;
+    }
+    
+    std::cout << "  " << result.creatureID << ": " 
+              << result.mesh.vertices.size() << " vertices, "
+              << result.mesh.indices.size() / 3 << " triangles" << std::endl;
+    
+    return result;
+}
+
+void GeneticsIntegration::Render(GraphicsEngine* graphicsEngine) {
     
     /*
     // Collect visual parameters from all organisms
