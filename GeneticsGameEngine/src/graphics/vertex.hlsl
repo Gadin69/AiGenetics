@@ -1,4 +1,9 @@
-// Vertex Shader
+// Vertex Shader - Complete with camera transformation
+cbuffer CameraConstants : register(b0)
+{
+    float4x4 viewMatrix;
+    float4x4 projectionMatrix;
+};
 
 struct VS_INPUT
 {
@@ -16,8 +21,10 @@ VS_OUTPUT main(VS_INPUT input)
 {
     VS_OUTPUT output;
     
-    // Transform position to clip space
-    output.position = float4(input.position, 1.0f);
+    // Transform position: World -> View -> Projection -> Clip space
+    float4 worldPos = float4(input.position.xyz, 1.0f);
+    float4 viewPos = mul(worldPos, viewMatrix);
+    output.position = mul(viewPos, projectionMatrix);
     
     // Pass through color
     output.color = input.color;

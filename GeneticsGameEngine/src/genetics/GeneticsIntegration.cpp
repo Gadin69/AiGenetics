@@ -1,4 +1,5 @@
 #include "GeneticsIntegration.h"
+#include "../graphics/GraphicsEngine.h"
 #include <iostream>
 #include <DirectXMath.h>
 
@@ -128,6 +129,10 @@ void GeneticsIntegration::Update(float deltaTime)
 
 void GeneticsIntegration::Render(GraphicsEngine* graphicsEngine)
 {
+    // TEMPORARILY DISABLED: Creature rendering pending full implementation
+    // The basic rendering pipeline is being tested first
+    
+    /*
     // Collect visual parameters from all organisms
     std::vector<CreatureRenderData> creatureData;
     creatureData.reserve(m_organisms.size());
@@ -149,6 +154,7 @@ void GeneticsIntegration::Render(GraphicsEngine* graphicsEngine)
     {
         graphicsEngine->RenderCreatures(creatureData, nullptr);
     }
+    */
 }
 
 DirectX::XMFLOAT4 GeneticsIntegration::GetColorFromIndex(int index)

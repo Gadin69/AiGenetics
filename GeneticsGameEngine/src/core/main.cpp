@@ -141,9 +141,13 @@ bool Application::Initialize()
         // Create orbit camera
         auto orbitCamera = m_cameraSystem->CreateCamera<Engine::Rendering::OrbitCameraController>("orbit");
         orbitCamera->SetTarget({0.0f, 0.0f, 0.0f});
-        orbitCamera->SetDistance(5.0f);
-        orbitCamera->SetRotation({0.0f, 0.0f, 0.0f});
+        orbitCamera->SetDistance(15.0f);
+        orbitCamera->SetRotation({0.5f, 0.8f, 0.0f}); // Pitch up ~30 degrees, yaw for better angle
         m_cameraSystem->SetActiveCamera(orbitCamera);
+        
+        // Pass camera to window for input handling
+        m_window->SetCamera(orbitCamera);
+        
         std::cout << "Camera system initialized successfully." << std::endl;
         std::cout.flush();
     }
@@ -208,9 +212,14 @@ void Application::Run()
                 m_cameraSystem->Update(deltaTime);
             }
             
-            // Render
-            m_graphicsEngine->Render();
-            m_geneticsIntegration->Render(m_graphicsEngine.get());
+            // Render everything in one pass
+            static int frameCount = 0;
+            if (frameCount == 0) std::cout << "About to call Render() - Frame 0" << std::endl;
+            
+            m_graphicsEngine->Render(m_geneticsIntegration, m_cameraSystem ? m_cameraSystem->GetActiveCamera() : nullptr);
+            
+            if (frameCount == 0) std::cout << "Render() completed - Frame 0" << std::endl;
+            frameCount++;
             
             // Update FPS counter
             UpdateFPS();
@@ -222,12 +231,12 @@ void Application::Run()
             break;
         }
         
-        // Cap frame rate at 60 FPS
-        if (deltaTime < 1.0f/60.0f)
-        {
-            std::this_thread::sleep_for(std::chrono::microseconds(
-                static_cast<long long>((1.0f/60.0f - deltaTime) * 1000000.0f))); 
-        }
+        // REMOVED: Frame rate limiting to test responsiveness
+        // if (deltaTime < 1.0f/60.0f)
+        // {
+        //     std::this_thread::sleep_for(std::chrono::microseconds(
+        //         static_cast<long long>((1.0f/60.0f - deltaTime) * 1000000.0f))); 
+        // }
     }
 }
 

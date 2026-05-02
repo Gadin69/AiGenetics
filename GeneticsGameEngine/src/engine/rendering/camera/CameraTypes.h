@@ -32,6 +32,12 @@ public:
     virtual DirectX::XMFLOAT3 GetForwardVector() const = 0;
     virtual DirectX::XMFLOAT3 GetRightVector() const = 0;
     virtual DirectX::XMFLOAT3 GetUpVector() const = 0;
+    
+    // Movement methods
+    virtual void Rotate(float yaw, float pitch) = 0;
+    virtual void MoveForward(float distance) = 0;
+    virtual void MoveRight(float distance) = 0;
+    virtual void MoveUp(float distance) = 0;
 };
 
 // Camera types enum

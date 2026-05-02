@@ -1,6 +1,7 @@
 #pragma once
 
 #include <DirectXMath.h>
+#include <algorithm>
 #include "CameraTypes.h"
 
 namespace Engine {
@@ -79,6 +80,44 @@ public:
 
     void SetFarPlane(float farPlane) override {
         m_farPlane = farPlane;
+        m_matricesDirty = true;
+    }
+    
+    // Movement methods
+    void Rotate(float yaw, float pitch) override {
+        m_rotation.y += yaw;
+        m_rotation.x += pitch;
+        
+        // Clamp pitch to avoid flipping
+        float minPitch = -DirectX::XM_PIDIV2 + 0.01f;
+        float maxPitch = DirectX::XM_PIDIV2 - 0.01f;
+        if (m_rotation.x < minPitch) m_rotation.x = minPitch;
+        if (m_rotation.x > maxPitch) m_rotation.x = maxPitch;
+        
+        m_matricesDirty = true;
+    }
+    
+    void MoveForward(float distance) override {
+        DirectX::XMFLOAT3 forward = GetForwardVector();
+        m_position.x += forward.x * distance;
+        m_position.y += forward.y * distance;
+        m_position.z += forward.z * distance;
+        m_matricesDirty = true;
+    }
+    
+    void MoveRight(float distance) override {
+        DirectX::XMFLOAT3 right = GetRightVector();
+        m_position.x += right.x * distance;
+        m_position.y += right.y * distance;
+        m_position.z += right.z * distance;
+        m_matricesDirty = true;
+    }
+    
+    void MoveUp(float distance) override {
+        DirectX::XMFLOAT3 up = GetUpVector();
+        m_position.x += up.x * distance;
+        m_position.y += up.y * distance;
+        m_position.z += up.z * distance;
         m_matricesDirty = true;
     }
 

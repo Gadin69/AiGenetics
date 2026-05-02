@@ -27,6 +27,10 @@ public:
         m_matricesDirty = true;
     }
     
+    float GetDistance() const {
+        return m_distance;
+    }
+    
     // Override Update to implement orbit behavior
     void Update(float deltaTime) override {
         // Calculate position based on rotation and target
