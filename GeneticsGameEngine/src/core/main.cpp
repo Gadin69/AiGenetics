@@ -177,14 +177,23 @@ bool Application::Initialize()
     {
         // Create FPS camera with WASD + mouse controls
         auto fpsCamera = m_cameraSystem->CreateCamera<Engine::Rendering::FirstPersonCameraController>("fps");
-        fpsCamera->SetPosition({0.0f, 2.0f, 10.0f});  // Start elevated and back
-        fpsCamera->SetRotation({0.0f, 0.0f, 0.0f});   // Looking straight
+        fpsCamera->SetPosition({0.0f, 2.0f, 8.0f});  // Start at creature height, closer
+        fpsCamera->SetRotation({0.0f, 0.0f, 0.0f});   // Looking straight (down -Z)
         fpsCamera->SetSensitivity(0.002f);             // Mouse sensitivity
+        
+        // Set camera window size for correct aspect ratio
+        auto camera = dynamic_cast<Engine::Rendering::CameraController*>(fpsCamera);
+        if (camera) {
+            camera->SetWindowSize((float)m_window->GetWidth(), (float)m_window->GetHeight());
+        }
+        
         m_cameraSystem->SetActiveCamera(fpsCamera);
         
         // Pass camera to window for input handling
         m_window->SetCamera(fpsCamera);
         
+        std::cout << "[DEBUG] fpsCamera address: " << fpsCamera << std::endl;
+        std::cout << "[DEBUG] ActiveCamera address: " << m_cameraSystem->GetActiveCamera() << std::endl;
         std::cout << "Camera system initialized successfully." << std::endl;
         std::cout.flush();
     }

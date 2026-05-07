@@ -2,6 +2,8 @@
 
 #include <DirectXMath.h>
 #include <algorithm>
+#include <cmath>
+#include <iostream>
 #include "CameraTypes.h"
 
 namespace Engine {
@@ -95,9 +97,13 @@ public:
     
     void MoveForward(float distance) override {
         DirectX::XMFLOAT3 forward = GetForwardVector();
+        std::cout << "[CAMERA] MoveForward(" << distance << ") - forward vector: (" 
+                  << forward.x << ", " << forward.y << ", " << forward.z << ")" << std::endl;
+        std::cout << "[CAMERA] Position BEFORE: (" << m_position.x << ", " << m_position.y << ", " << m_position.z << ")" << std::endl;
         m_position.x += forward.x * distance;
         m_position.y += forward.y * distance;
         m_position.z += forward.z * distance;
+        std::cout << "[CAMERA] Position AFTER: (" << m_position.x << ", " << m_position.y << ", " << m_position.z << ")" << std::endl;
         m_matricesDirty = true;
     }
     
@@ -116,32 +122,51 @@ public:
         m_position.z += up.z * distance;
         m_matricesDirty = true;
     }
+    
+    void SetWindowSize(float width, float height) {
+        m_windowSize = DirectX::XMFLOAT2(width, height);
+        m_matricesDirty = true;
+    }
 
 protected:
     mutable bool m_matricesDirty;
+    DirectX::XMFLOAT2 m_windowSize;
     
     DirectX::XMFLOAT3 GetForwardVector() const override {
-        // Calculate forward vector from rotation
+        // CAMERA MOVEMENT - DO NOT MODIFY unless explicitly requested
+        // Calculates forward direction from pitch and yaw rotation angles
+        // Uses left-handed coordinate system: forward = -Z when rotation is (0,0,0)
         float pitch = m_rotation.x;
         float yaw = m_rotation.y;
         
         DirectX::XMFLOAT3 forward;
         forward.x = cosf(pitch) * sinf(yaw);
-        forward.y = -sinf(pitch);  // Negate Y to match DirectX coordinate system
-        forward.z = cosf(pitch) * cosf(yaw);
+        forward.y = sinf(pitch);
+        forward.z = -cosf(pitch) * cosf(yaw);  // Negative Z for forward in LH coordinate system
         
         return forward;
     }
     
     DirectX::XMFLOAT3 GetRightVector() const override {
-        // Calculate right vector from rotation
-        float pitch = m_rotation.x;
-        float yaw = m_rotation.y;
+        // CAMERA MOVEMENT - DO NOT MODIFY unless explicitly requested
+        // Calculates right vector as cross product of world-up and forward direction
+        // This ensures stable strafing movement at all yaw angles (no gimbal lock)
+        DirectX::XMFLOAT3 forward = GetForwardVector();
+        DirectX::XMFLOAT3 worldUp = { 0.0f, 1.0f, 0.0f };
         
+        // Cross product: right = worldUp × forward
         DirectX::XMFLOAT3 right;
-        right.x = cosf(yaw);
-        right.y = 0.0f;
-        right.z = -sinf(yaw);
+        right.x = worldUp.y * forward.z - worldUp.z * forward.y;
+        right.y = worldUp.z * forward.x - worldUp.x * forward.z;
+        right.z = worldUp.x * forward.y - worldUp.y * forward.x;
+        
+        // Normalize the right vector
+        float length = sqrtf(right.x * right.x + right.y * right.y + right.z * right.z);
+        if (length > 0.001f) {
+            right.x /= length;
+            right.y /= length;
+            right.z /= length;
+        }
         
         return right;
     }
@@ -166,9 +191,17 @@ protected:
     
 private:
     void UpdateMatrices() const {
+        // CAMERA MOVEMENT - DO NOT MODIFY unless explicitly requested
+        // Creates view matrix using world-up vector (0,1,0) to prevent roll/gimbal lock
+        std::cout << "[CAMERA] UpdateMatrices called - position: (" 
+                  << m_position.x << ", " << m_position.y << ", " << m_position.z << ")" << std::endl;
+        
         // Create view matrix
         DirectX::XMFLOAT3 forward = GetForwardVector();
-        DirectX::XMFLOAT3 up = GetUpVector();
+        
+        // FIXED: Always use world-up vector (0, 1, 0) for first-person camera
+        // This prevents the view from rolling/flipping at horizontal rotation extremes
+        DirectX::XMFLOAT3 up = { 0.0f, 1.0f, 0.0f };
         
         // Calculate look-at target position (camera position + forward direction)
         DirectX::XMFLOAT3 lookAtTarget;
@@ -185,12 +218,17 @@ private:
             )
         );
         
-        // Create projection matrix
+        // Create projection matrix with correct aspect ratio
+        float aspectRatio = 16.0f / 9.0f; // Default fallback
+        if (m_windowSize.x > 0.0f && m_windowSize.y > 0.0f) {
+            aspectRatio = m_windowSize.x / m_windowSize.y;
+        }
+        
         DirectX::XMStoreFloat4x4(
             &m_projectionMatrix,
             DirectX::XMMatrixPerspectiveFovLH(
                 m_fov,
-                16.0f / 9.0f, // Aspect ratio
+                aspectRatio,
                 m_nearPlane,
                 m_farPlane
             )

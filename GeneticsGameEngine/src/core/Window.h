@@ -46,6 +46,8 @@ public:
     
     bool Initialize(int width, int height, LPCWSTR title);
     HWND GetHwnd() const { return m_hWnd; }
+    int GetWidth() const { return m_width; }
+    int GetHeight() const { return m_height; }
     void SetCamera(Engine::Rendering::BaseCameraController* camera) { m_camera = camera; }
     void SetGraphicsEngine(GraphicsEngine* engine) { m_graphicsEngine = engine; }
     void ProcessKeyboardInput(float deltaTime);

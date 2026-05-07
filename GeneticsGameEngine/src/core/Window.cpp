@@ -34,14 +34,22 @@ void Window::ProcessKeyboardInput(float deltaTime)
     
     float moveSpeed = 10.0f * deltaTime;  // Units per second
     
-    if (m_keyW)
+    if (m_keyW) {
+        std::cout << "[INPUT] W pressed - calling MoveForward(" << moveSpeed << ")" << std::endl;
         m_camera->MoveForward(moveSpeed);
-    if (m_keyS)
+    }
+    if (m_keyS) {
+        std::cout << "[INPUT] S pressed - moving backward " << moveSpeed << " units" << std::endl;
         m_camera->MoveForward(-moveSpeed);
-    if (m_keyA)
+    }
+    if (m_keyA) {
+        std::cout << "[INPUT] A pressed - moving left " << moveSpeed << " units" << std::endl;
         m_camera->MoveRight(-moveSpeed);
-    if (m_keyD)
+    }
+    if (m_keyD) {
+        std::cout << "[INPUT] D pressed - moving right " << moveSpeed << " units" << std::endl;
         m_camera->MoveRight(moveSpeed);
+    }
 }
 
 bool Window::Initialize(int width, int height, LPCWSTR title)
@@ -182,9 +190,12 @@ LRESULT Window::HandleMessage(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPa
                     int deltaX = x - m_lastMouseX;
                     int deltaY = y - m_lastMouseY;
                     
-                    // Rotate camera based on mouse movement
+                    // CAMERA MOVEMENT - DO NOT MODIFY unless explicitly requested
+                    // Mouse rotation with both axes negated for correct direction:
+                    // -deltaX: Moving mouse right (positive delta) rotates camera right (positive yaw)
+                    // -deltaY: Moving mouse up (negative delta) rotates camera up (positive pitch)
                     float sensitivity = 0.005f;
-                    m_camera->Rotate(deltaX * sensitivity, deltaY * sensitivity);
+                    m_camera->Rotate(-deltaX * sensitivity, -deltaY * sensitivity);
                     
                     m_lastMouseX = x;
                     m_lastMouseY = y;

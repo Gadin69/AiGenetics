@@ -86,7 +86,7 @@
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\core;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\graphics;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\genetics;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\core;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\graphics;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\genetics;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\.;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine\neural;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <BufferSecurityCheck></BufferSecurityCheck>
@@ -111,10 +111,10 @@
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_DEBUG;_WINDOWS;UNICODE;_UNICODE;NOMINMAX;CMAKE_INTDIR=\"Debug\"</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\core;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\graphics;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\genetics;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\core;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\graphics;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\genetics;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\.;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine\neural;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Midl>
-      <AdditionalIncludeDirectories>C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\core;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\graphics;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\genetics;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\core;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\graphics;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\genetics;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\.;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine\neural;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
       <HeaderFileName>%(Filename).h</HeaderFileName>
       <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
@@ -128,6 +128,12 @@
 if %errorlevel% neq 0 goto :cmEnd
 "D:\Program Files\CMake\bin\cmake.exe" -E copy_if_different C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/src/graphics/pixel.hlsl /Debug/pixel.hlsl
 if %errorlevel% neq 0 goto :cmEnd
+"D:\Program Files\CMake\bin\cmake.exe" -E copy_if_different C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/src/../shaders/PBRCommon.hlsl /Debug/PBRCommon.hlsl
+if %errorlevel% neq 0 goto :cmEnd
+"D:\Program Files\CMake\bin\cmake.exe" -E copy_if_different C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/src/../shaders/PBRVertex.hlsl /Debug/PBRVertex.hlsl
+if %errorlevel% neq 0 goto :cmEnd
+"D:\Program Files\CMake\bin\cmake.exe" -E copy_if_different C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/src/../shaders/PBRPixel.hlsl /Debug/PBRPixel.hlsl
+if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
 :cmErrorLevel
@@ -136,7 +142,7 @@ exit /b %1
 if %errorlevel% neq 0 goto :VCEnd</Command>
     </PostBuildEvent>
     <Link>
-      <AdditionalDependencies>core\Debug\Core.lib;graphics\Debug\GraphicsEngine.lib;genetics\Debug\GeneticsIntegration.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
+      <AdditionalDependencies>core\Debug\Core.lib;graphics\Debug\GraphicsEngine.lib;genetics\Debug\GeneticsIntegration.lib;engine\Debug\Engine.lib;engine\neural\Debug\Neural.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;engine\procedural\Debug\Procedural.lib;d3d12.lib;dxgi.lib;dxguid.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalOptions>%(AdditionalOptions) /machine:x64</AdditionalOptions>
       <DataExecutionPrevention></DataExecutionPrevention>
@@ -155,7 +161,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\core;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\graphics;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\genetics;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\core;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\graphics;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\genetics;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\.;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine\neural;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
       <BufferSecurityCheck></BufferSecurityCheck>
@@ -181,10 +187,10 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;UNICODE;_UNICODE;NOMINMAX;CMAKE_INTDIR=\"Release\"</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\core;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\graphics;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\genetics;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\core;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\graphics;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\genetics;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\.;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine\neural;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Midl>
-      <AdditionalIncludeDirectories>C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\core;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\graphics;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\genetics;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\core;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\graphics;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\genetics;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\.;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine\neural;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
       <HeaderFileName>%(Filename).h</HeaderFileName>
       <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
@@ -198,6 +204,12 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
 if %errorlevel% neq 0 goto :cmEnd
 "D:\Program Files\CMake\bin\cmake.exe" -E copy_if_different C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/src/graphics/pixel.hlsl /Release/pixel.hlsl
 if %errorlevel% neq 0 goto :cmEnd
+"D:\Program Files\CMake\bin\cmake.exe" -E copy_if_different C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/src/../shaders/PBRCommon.hlsl /Release/PBRCommon.hlsl
+if %errorlevel% neq 0 goto :cmEnd
+"D:\Program Files\CMake\bin\cmake.exe" -E copy_if_different C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/src/../shaders/PBRVertex.hlsl /Release/PBRVertex.hlsl
+if %errorlevel% neq 0 goto :cmEnd
+"D:\Program Files\CMake\bin\cmake.exe" -E copy_if_different C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/src/../shaders/PBRPixel.hlsl /Release/PBRPixel.hlsl
+if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
 :cmErrorLevel
@@ -206,7 +218,7 @@ exit /b %1
 if %errorlevel% neq 0 goto :VCEnd</Command>
     </PostBuildEvent>
     <Link>
-      <AdditionalDependencies>core\Release\Core.lib;graphics\Release\GraphicsEngine.lib;genetics\Release\GeneticsIntegration.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
+      <AdditionalDependencies>core\Release\Core.lib;graphics\Release\GraphicsEngine.lib;genetics\Release\GeneticsIntegration.lib;engine\Release\Engine.lib;engine\neural\Release\Neural.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;engine\procedural\Release\Procedural.lib;d3d12.lib;dxgi.lib;dxguid.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalOptions>%(AdditionalOptions) /machine:x64</AdditionalOptions>
       <DataExecutionPrevention></DataExecutionPrevention>
@@ -225,7 +237,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\core;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\graphics;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\genetics;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\core;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\graphics;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\genetics;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\.;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine\neural;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
       <BufferSecurityCheck></BufferSecurityCheck>
@@ -251,10 +263,10 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;UNICODE;_UNICODE;NOMINMAX;CMAKE_INTDIR=\"MinSizeRel\"</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\core;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\graphics;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\genetics;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\core;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\graphics;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\genetics;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\.;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine\neural;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Midl>
-      <AdditionalIncludeDirectories>C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\core;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\graphics;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\genetics;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\core;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\graphics;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\genetics;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\.;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine\neural;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
       <HeaderFileName>%(Filename).h</HeaderFileName>
       <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
@@ -268,6 +280,12 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
 if %errorlevel% neq 0 goto :cmEnd
 "D:\Program Files\CMake\bin\cmake.exe" -E copy_if_different C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/src/graphics/pixel.hlsl /MinSizeRel/pixel.hlsl
 if %errorlevel% neq 0 goto :cmEnd
+"D:\Program Files\CMake\bin\cmake.exe" -E copy_if_different C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/src/../shaders/PBRCommon.hlsl /MinSizeRel/PBRCommon.hlsl
+if %errorlevel% neq 0 goto :cmEnd
+"D:\Program Files\CMake\bin\cmake.exe" -E copy_if_different C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/src/../shaders/PBRVertex.hlsl /MinSizeRel/PBRVertex.hlsl
+if %errorlevel% neq 0 goto :cmEnd
+"D:\Program Files\CMake\bin\cmake.exe" -E copy_if_different C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/src/../shaders/PBRPixel.hlsl /MinSizeRel/PBRPixel.hlsl
+if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
 :cmErrorLevel
@@ -276,7 +294,7 @@ exit /b %1
 if %errorlevel% neq 0 goto :VCEnd</Command>
     </PostBuildEvent>
     <Link>
-      <AdditionalDependencies>core\MinSizeRel\Core.lib;graphics\MinSizeRel\GraphicsEngine.lib;genetics\MinSizeRel\GeneticsIntegration.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
+      <AdditionalDependencies>core\MinSizeRel\Core.lib;graphics\MinSizeRel\GraphicsEngine.lib;genetics\MinSizeRel\GeneticsIntegration.lib;engine\MinSizeRel\Engine.lib;engine\neural\MinSizeRel\Neural.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;engine\procedural\MinSizeRel\Procedural.lib;d3d12.lib;dxgi.lib;dxguid.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalOptions>%(AdditionalOptions) /machine:x64</AdditionalOptions>
       <DataExecutionPrevention></DataExecutionPrevention>
@@ -295,7 +313,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\core;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\graphics;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\genetics;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\core;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\graphics;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\genetics;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\.;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine\neural;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
       <BufferSecurityCheck></BufferSecurityCheck>
@@ -320,10 +338,10 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;UNICODE;_UNICODE;NOMINMAX;CMAKE_INTDIR=\"RelWithDebInfo\"</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\core;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\graphics;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\genetics;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\core;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\graphics;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\genetics;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\.;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine\neural;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Midl>
-      <AdditionalIncludeDirectories>C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\core;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\graphics;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\genetics;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\core;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\graphics;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\genetics;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\.;C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine\neural;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
       <HeaderFileName>%(Filename).h</HeaderFileName>
       <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
@@ -337,6 +355,12 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
 if %errorlevel% neq 0 goto :cmEnd
 "D:\Program Files\CMake\bin\cmake.exe" -E copy_if_different C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/src/graphics/pixel.hlsl /RelWithDebInfo/pixel.hlsl
 if %errorlevel% neq 0 goto :cmEnd
+"D:\Program Files\CMake\bin\cmake.exe" -E copy_if_different C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/src/../shaders/PBRCommon.hlsl /RelWithDebInfo/PBRCommon.hlsl
+if %errorlevel% neq 0 goto :cmEnd
+"D:\Program Files\CMake\bin\cmake.exe" -E copy_if_different C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/src/../shaders/PBRVertex.hlsl /RelWithDebInfo/PBRVertex.hlsl
+if %errorlevel% neq 0 goto :cmEnd
+"D:\Program Files\CMake\bin\cmake.exe" -E copy_if_different C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/src/../shaders/PBRPixel.hlsl /RelWithDebInfo/PBRPixel.hlsl
+if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
 :cmErrorLevel
@@ -345,7 +369,7 @@ exit /b %1
 if %errorlevel% neq 0 goto :VCEnd</Command>
     </PostBuildEvent>
     <Link>
-      <AdditionalDependencies>core\RelWithDebInfo\Core.lib;graphics\RelWithDebInfo\GraphicsEngine.lib;genetics\RelWithDebInfo\GeneticsIntegration.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
+      <AdditionalDependencies>core\RelWithDebInfo\Core.lib;graphics\RelWithDebInfo\GraphicsEngine.lib;genetics\RelWithDebInfo\GeneticsIntegration.lib;engine\RelWithDebInfo\Engine.lib;engine\neural\RelWithDebInfo\Neural.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;engine\procedural\RelWithDebInfo\Procedural.lib;d3d12.lib;dxgi.lib;dxguid.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalOptions>%(AdditionalOptions) /machine:x64</AdditionalOptions>
       <DataExecutionPrevention></DataExecutionPrevention>
@@ -437,6 +461,10 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <Project>{1A0E8C7F-15CB-3D18-8C6C-2A16B1E8B6D7}</Project>
       <Name>Core</Name>
     </ProjectReference>
+    <ProjectReference Include="C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\build\src\engine\Engine.vcxproj">
+      <Project>{FB003880-2B5F-3F60-9B1B-FDB05037FB3E}</Project>
+      <Name>Engine</Name>
+    </ProjectReference>
     <ProjectReference Include="C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\build\src\genetics\GeneticsIntegration.vcxproj">
       <Project>{373DF504-B74A-3744-9064-E6819DDD0A0B}</Project>
       <Name>GeneticsIntegration</Name>
@@ -444,6 +472,14 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ProjectReference Include="C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\build\src\graphics\GraphicsEngine.vcxproj">
       <Project>{5533F41D-40F6-3B6E-B2E5-806EE9CB5C3D}</Project>
       <Name>GraphicsEngine</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\build\src\engine\neural\Neural.vcxproj">
+      <Project>{40BF55E1-49F1-3617-9C23-18FFB4573952}</Project>
+      <Name>Neural</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\build\src\engine\procedural\Procedural.vcxproj">
+      <Project>{FCB14313-9E04-3F62-92BE-155C0B70CB94}</Project>
+      <Name>Procedural</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

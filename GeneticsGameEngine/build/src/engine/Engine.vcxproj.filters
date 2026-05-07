@@ -1,0 +1,117 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine\rendering\HDRRenderer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine\rendering\materials\pbr\PBRMaterial.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine\rendering\materials\pbr\MaterialSystem.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine\rendering\textures\ProceduralTextureGenerator.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine\rendering\camera\CameraController.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine\rendering\camera\CameraSystem.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine\rendering\camera\CameraTypes.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine\rendering\camera\OrbitCameraController.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine\rendering\camera\FirstPersonCameraController.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine\rendering\camera\CinematicCameraController.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine\rendering\culling\BoundingVolume.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine\rendering\culling\FrustumCuller.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine\rendering\culling\SpatialPartition.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine\rendering\lod\LODManager.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine\rendering\lod\LODLevel.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine\rendering\projection\ProjectionMatrix.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine\rendering\projection\ProjectionModes.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine\rendering\HDRRenderer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine\rendering\materials\pbr\PBRMaterial.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine\rendering\materials\pbr\MaterialSystem.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine\rendering\textures\ProceduralTextureGenerator.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine\genetics\genome\Chromosome.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine\genetics\genome\Gene.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine\genetics\genome\Genome.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine\genetics\taxonomy\Organism.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine\genetics\taxonomy\Animal.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine\genetics\taxonomy\Chordata.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine\genetics\taxonomy\Arthropoda.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine\genetics\taxonomy\Mollusca.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine\genetics\expression\ExpressionRules.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine\genetics\expression\GeneticExpression.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine\genetics\breeding\BreedingSystem.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine\genetics\breeding\MutationEngine.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{F9279530-3841-3B04-BABB-F497123C1279}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{DC225D26-653C-3E09-A8AD-495D77217BAD}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

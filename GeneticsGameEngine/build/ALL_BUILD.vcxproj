@@ -178,6 +178,10 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <Project>{1A0E8C7F-15CB-3D18-8C6C-2A16B1E8B6D7}</Project>
       <Name>Core</Name>
     </ProjectReference>
+    <ProjectReference Include="C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\build\src\engine\Engine.vcxproj">
+      <Project>{FB003880-2B5F-3F60-9B1B-FDB05037FB3E}</Project>
+      <Name>Engine</Name>
+    </ProjectReference>
     <ProjectReference Include="C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\build\src\GeneticsGameEngine.vcxproj">
       <Project>{80281DDD-E66E-3B3E-9ACA-FDDD8A983F0C}</Project>
       <Name>GeneticsGameEngine</Name>
@@ -189,6 +193,14 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ProjectReference Include="C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\build\src\graphics\GraphicsEngine.vcxproj">
       <Project>{5533F41D-40F6-3B6E-B2E5-806EE9CB5C3D}</Project>
       <Name>GraphicsEngine</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\build\src\engine\neural\Neural.vcxproj">
+      <Project>{40BF55E1-49F1-3617-9C23-18FFB4573952}</Project>
+      <Name>Neural</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\build\src\engine\procedural\Procedural.vcxproj">
+      <Project>{FCB14313-9E04-3F62-92BE-155C0B70CB94}</Project>
+      <Name>Procedural</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

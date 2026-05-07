@@ -28,6 +28,7 @@ using namespace GeneticsGameEngine::Rendering;
 // Vertex structure for rendering
 struct Vertex {
     DirectX::XMFLOAT3 position;
+    DirectX::XMFLOAT3 normal;
     DirectX::XMFLOAT4 color;
 };
 

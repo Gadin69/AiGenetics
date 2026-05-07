@@ -244,12 +244,13 @@ bool GraphicsEngine::Initialize(HWND hWnd)
             return false;
         }
         
-        // Step 14: Initialize PBR system
-        if (!InitializePBRSystem())
-        {
-            std::cerr << "Failed to initialize PBR system" << std::endl;
-            return false;
-        }
+        // Step 14: Initialize PBR system - TEMPORARILY DISABLED
+        // if (!InitializePBRSystem())
+        // {
+        //     std::cerr << "Failed to initialize PBR system" << std::endl;
+        //     return false;
+        // }
+        std::cout << "PBR system DISABLED (temporarily)" << std::endl;
         
         std::cout << "DirectX 12 initialization completed successfully!" << std::endl;
         return true;
@@ -759,18 +760,11 @@ bool GraphicsEngine::CreateRootSignature()
 {
     std::cout << "  Creating root signature..." << std::endl;
     
-    // Create root signature with CBV descriptor table for camera constants
-    D3D12_DESCRIPTOR_RANGE cbvRange = {};
-    cbvRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
-    cbvRange.NumDescriptors = 1;
-    cbvRange.BaseShaderRegister = 0;
-    cbvRange.RegisterSpace = 0;
-    cbvRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-    
+    // Use root CBV directly instead of descriptor table
     D3D12_ROOT_PARAMETER rootParam = {};
-    rootParam.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-    rootParam.DescriptorTable.NumDescriptorRanges = 1;
-    rootParam.DescriptorTable.pDescriptorRanges = &cbvRange;
+    rootParam.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+    rootParam.Descriptor.ShaderRegister = 0;  // register(b0)
+    rootParam.Descriptor.RegisterSpace = 0;
     rootParam.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
     
     D3D12_ROOT_SIGNATURE_DESC rootDesc = {};
@@ -810,7 +804,7 @@ bool GraphicsEngine::CreateRootSignature()
         "CreateRootSignature failed"
     );
     
-    std::cout << "  Root signature created successfully (with CBV table)" << std::endl;
+    std::cout << "  Root signature created successfully (with root CBV)" << std::endl;
     return true;
 }
 
@@ -972,27 +966,34 @@ bool GraphicsEngine::CreateVertexBuffer()
     Vertex vertices[] =
     {
         // Front face (looking from +Z) - CCW: Top, Bottom-Right, Bottom-Left
-        { { 0.0f, 1.0f, 0.0f }, { 1.0f, 0.0f, 0.0f, 1.0f } },   // Apex TOP - Red
-        { { 1.0f, -1.0f, 1.0f }, { 0.0f, 0.0f, 1.0f, 1.0f } },   // Bottom Right - Blue
-        { { -1.0f, -1.0f, 1.0f }, { 0.0f, 1.0f, 0.0f, 1.0f } },  // Bottom Left - Green
+        { { 0.0f, 1.0f, 0.0f }, { 0.0f, 0.707f, 0.707f }, { 1.0f, 0.0f, 0.0f, 1.0f } },   // Apex TOP - Red
+        { { 1.0f, -1.0f, 1.0f }, { 0.0f, 0.707f, 0.707f }, { 0.0f, 0.0f, 1.0f, 1.0f } },   // Bottom Right - Blue
+        { { -1.0f, -1.0f, 1.0f }, { 0.0f, 0.707f, 0.707f }, { 0.0f, 1.0f, 0.0f, 1.0f } },  // Bottom Left - Green
         
         // Right face (looking from +X) - CCW: Top, Bottom-Back, Bottom-Front
-        { { 0.0f, 1.0f, 0.0f }, { 1.0f, 1.0f, 0.0f, 1.0f } },    // Apex TOP - Yellow
-        { { 1.0f, -1.0f, -1.0f }, { 0.0f, 1.0f, 1.0f, 1.0f } },  // Bottom Back - Cyan
-        { { 1.0f, -1.0f, 1.0f }, { 1.0f, 0.0f, 1.0f, 1.0f } },   // Bottom Front - Magenta
+        { { 0.0f, 1.0f, 0.0f }, { 0.707f, 0.707f, 0.0f }, { 1.0f, 1.0f, 0.0f, 1.0f } },    // Apex TOP - Yellow
+        { { 1.0f, -1.0f, -1.0f }, { 0.707f, 0.707f, 0.0f }, { 0.0f, 1.0f, 1.0f, 1.0f } },  // Bottom Back - Cyan
+        { { 1.0f, -1.0f, 1.0f }, { 0.707f, 0.707f, 0.0f }, { 1.0f, 0.0f, 1.0f, 1.0f } },   // Bottom Front - Magenta
         
         // Back face (looking from -Z) - CCW: Top, Bottom-Left, Bottom-Right
-        { { 0.0f, 1.0f, 0.0f }, { 1.0f, 0.5f, 0.0f, 1.0f } },    // Apex TOP - Orange
-        { { -1.0f, -1.0f, -1.0f }, { 0.0f, 0.5f, 1.0f, 1.0f } }, // Bottom Left - Sky Blue
-        { { 1.0f, -1.0f, -1.0f }, { 0.5f, 1.0f, 0.0f, 1.0f } },  // Bottom Right - Lime
+        { { 0.0f, 1.0f, 0.0f }, { 0.0f, 0.707f, -0.707f }, { 1.0f, 0.5f, 0.0f, 1.0f } },    // Apex TOP - Orange
+        { { -1.0f, -1.0f, -1.0f }, { 0.0f, 0.707f, -0.707f }, { 0.0f, 0.5f, 1.0f, 1.0f } }, // Bottom Left - Sky Blue
+        { { 1.0f, -1.0f, -1.0f }, { 0.0f, 0.707f, -0.707f }, { 0.5f, 1.0f, 0.0f, 1.0f } },  // Bottom Right - Lime
         
         // Left face (looking from -X) - CCW: Top, Bottom-Front, Bottom-Back
-        { { 0.0f, 1.0f, 0.0f }, { 0.5f, 0.0f, 1.0f, 1.0f } },    // Apex TOP - Purple
-        { { -1.0f, -1.0f, 1.0f }, { 0.0f, 1.0f, 0.5f, 1.0f } },  // Bottom Front - Mint
-        { { -1.0f, -1.0f, -1.0f }, { 1.0f, 0.0f, 0.5f, 1.0f } }  // Bottom Back - Pink
+        { { 0.0f, 1.0f, 0.0f }, { -0.707f, 0.707f, 0.0f }, { 0.5f, 0.0f, 1.0f, 1.0f } },    // Apex TOP - Purple
+        { { -1.0f, -1.0f, 1.0f }, { -0.707f, 0.707f, 0.0f }, { 0.0f, 1.0f, 0.5f, 1.0f } },  // Bottom Front - Mint
+        { { -1.0f, -1.0f, -1.0f }, { -0.707f, 0.707f, 0.0f }, { 1.0f, 0.0f, 0.5f, 1.0f } }  // Bottom Back - Pink
     };
     
     const UINT64 bufferSize = sizeof(vertices);
+    
+    // Debug: Print first vertex position
+    std::cout << "  [DEBUG] First pyramid vertex: (" 
+              << vertices[0].position.x << ", " 
+              << vertices[0].position.y << ", " 
+              << vertices[0].position.z << ")" << std::endl;
+    std::cout << "  [DEBUG] Total pyramid vertices: " << (bufferSize / sizeof(Vertex)) << std::endl;
     
     // Create upload heap
     CD3DX12_HEAP_PROPERTIES heapProps(D3D12_HEAP_TYPE_UPLOAD);
@@ -1217,6 +1218,22 @@ void GraphicsEngine::UpdateCameraConstantBuffer(Engine::Rendering::BaseCameraCon
     constants.viewMatrix = viewFloat;
     constants.projectionMatrix = projectionFloat;
     
+    // Debug: Print FULL view matrix on first few frames
+    static int frameCount = 0;
+    if (frameCount < 3) {
+        std::cout << "[GPU] Frame " << frameCount << " - View Matrix:" << std::endl;
+        std::cout << "  [" << viewFloat._11 << ", " << viewFloat._12 << ", " << viewFloat._13 << ", " << viewFloat._14 << "]" << std::endl;
+        std::cout << "  [" << viewFloat._21 << ", " << viewFloat._22 << ", " << viewFloat._23 << ", " << viewFloat._24 << "]" << std::endl;
+        std::cout << "  [" << viewFloat._31 << ", " << viewFloat._32 << ", " << viewFloat._33 << ", " << viewFloat._34 << "]" << std::endl;
+        std::cout << "  [" << viewFloat._41 << ", " << viewFloat._42 << ", " << viewFloat._43 << ", " << viewFloat._44 << "]" << std::endl;
+        std::cout << "[GPU] Frame " << frameCount << " - Projection Matrix:" << std::endl;
+        std::cout << "  [" << projectionFloat._11 << ", " << projectionFloat._12 << ", " << projectionFloat._13 << ", " << projectionFloat._14 << "]" << std::endl;
+        std::cout << "  [" << projectionFloat._21 << ", " << projectionFloat._22 << ", " << projectionFloat._23 << ", " << projectionFloat._24 << "]" << std::endl;
+        std::cout << "  [" << projectionFloat._31 << ", " << projectionFloat._32 << ", " << projectionFloat._33 << ", " << projectionFloat._34 << "]" << std::endl;
+        std::cout << "  [" << projectionFloat._41 << ", " << projectionFloat._42 << ", " << projectionFloat._43 << ", " << projectionFloat._44 << "]" << std::endl;
+    }
+    frameCount++;
+    
     // Copy to mapped memory
     memcpy(m_pCameraConstantData, &constants, sizeof(constants));
 }
@@ -1275,13 +1292,8 @@ void GraphicsEngine::PopulateCommandList(Engine::Rendering::BaseCameraController
         m_rtvDescriptorSize
     );
     
-    // Change background color based on wireframe mode for visual feedback
-    const FLOAT clearColor[] = { 
-        m_wireframeMode ? 0.2f : 0.0f,  // R: darker when wireframe
-        m_wireframeMode ? 0.1f : 0.2f,  // G: darker when wireframe
-        m_wireframeMode ? 0.3f : 0.4f,  // B: darker when wireframe
-        1.0f 
-    };
+    // Change background color to RED for testing
+    const FLOAT clearColor[] = { 0.3f, 0.0f, 0.0f, 1.0f };  // Dark red
     m_commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
     
     // Clear depth buffer
@@ -1316,30 +1328,40 @@ void GraphicsEngine::PopulateCommandList(Engine::Rendering::BaseCameraController
     // Update and set camera constant buffer
     UpdateCameraConstantBuffer(camera);
     
-    // Set descriptor heap and bind camera CBV
-    ID3D12DescriptorHeap* ppHeaps[] = { m_cbvSrvUavHeap.Get() };
-    m_commandList->SetDescriptorHeaps(1, ppHeaps);
-    m_commandList->SetGraphicsRootDescriptorTable(
+    // Bind camera CBV directly using root parameter
+    m_commandList->SetGraphicsRootConstantBufferView(
         0,
-        m_cbvSrvUavHeap->GetGPUDescriptorHandleForHeapStart()
+        m_cameraConstantBuffer->GetGPUVirtualAddress()
     );
     
     // Set primitive topology
     m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     
-    // Draw 3D pyramid (4 faces = 12 vertices)
-    m_commandList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
-    m_commandList->DrawInstanced(12, 1, 0, 0);
+    // Draw reference geometry to see camera movement
     
-    // Draw ground plane
+    // Draw ground plane (reference grid)
     m_commandList->IASetVertexBuffers(0, 1, &m_groundVertexBufferView);
     m_commandList->IASetIndexBuffer(&m_groundIndexBufferView);
     m_commandList->DrawIndexedInstanced(m_groundIndexCount, 1, 0, 0, 0);
     
+    // Draw 3D pyramid as reference object
+    m_commandList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
+    m_commandList->DrawInstanced(12, 1, 0, 0);
+    
     // Render creature meshes
+    static bool printed = false;
     if (!creatures.empty())
     {
+        if (!printed) {
+            std::cout << "[DEBUG] Rendering " << creatures.size() << " creatures" << std::endl;
+            printed = true;
+        }
         RenderCreatures(creatures);
+    } else {
+        if (!printed) {
+            std::cout << "[DEBUG] NO CREATURES TO RENDER!" << std::endl;
+            printed = true;
+        }
     }
     
     // Close command list
@@ -1363,47 +1385,12 @@ void GraphicsEngine::RenderCreatures(const std::vector<CreatureMeshData>& creatu
     if (frameCounter < 3) {
         std::cout << "\n=== RenderCreatures Frame " << frameCounter << " ==="  << std::endl;
         std::cout << "Rendering " << creatures.size() << " creatures" << std::endl;
-        std::cout << "[WIREFRAME MODE: " << (m_wireframeMode ? "ON" : "OFF") << "]" << std::endl;
+        std::cout << "[Using SIMPLE pipeline (PBR disabled)]" << std::endl;
     }
     
-    // Switch to PBR pipeline for creature rendering
-    if (m_pbrRootSignature && m_pbrPipelineState)
-    {
-        if (frameCounter < 5 && m_wireframeMode) {
-            std::cout << "  [DEBUG] Setting root signature..." << std::endl;
-        }
-        m_commandList->SetGraphicsRootSignature(m_pbrRootSignature.Get());
-        
-        // Choose pipeline state based on wireframe mode
-        if (m_wireframeMode && m_pbrWireframePipelineState)
-        {
-            if (frameCounter < 5) {
-                std::cout << "  [DEBUG] Setting WIREFRAME PSO..." << std::endl;
-            }
-            m_commandList->SetPipelineState(m_pbrWireframePipelineState.Get());
-            if (frameCounter < 5) {
-                std::cout << "  [DEBUG] Using WIREFRAME pipeline state" << std::endl;
-            }
-        }
-        else
-        {
-            m_commandList->SetPipelineState(m_pbrPipelineState.Get());
-            if (frameCounter < 5 && m_wireframeMode) {
-                std::cout << "  [WARNING] Wireframe mode ON but wireframe PSO is null!" << std::endl;
-            }
-        }
-        
-        if (frameCounter < 3) {
-            std::cout << "  Using PBR pipeline for creatures" << std::endl;
-            if (m_wireframeMode) {
-                std::cout << "  [WIREFRAME MODE]" << std::endl;
-            }
-        }
-    }
-    else
-    {
-        std::cerr << "  WARNING: PBR pipeline not available, using default" << std::endl;
-    }
+    // Use simple pipeline for now (PBR is disabled)
+    m_commandList->SetGraphicsRootSignature(m_rootSignature.Get());
+    m_commandList->SetPipelineState(m_pipelineState.Get());
     
     // Render each creature mesh
     for (size_t i = 0; i < creatures.size(); ++i)
@@ -1420,9 +1407,6 @@ void GraphicsEngine::RenderCreatures(const std::vector<CreatureMeshData>& creatu
         if (frameCounter < 3) {
             std::cout << "Rendering creature " << i << " (" << creature.creatureID << ") with " << vertexCount << " vertices at position (" 
                       << creature.position.x << ", " << creature.position.y << ", " << creature.position.z << ")" << std::endl;
-            if (creature.materialID > 0) {
-                std::cout << "  Material ID: " << creature.materialID << std::endl;
-            }
         }
         
         if (vertexCount == 0)
@@ -1431,13 +1415,7 @@ void GraphicsEngine::RenderCreatures(const std::vector<CreatureMeshData>& creatu
             continue;
         }
         
-        // Bind PBR material if available
-        if (m_materialSystem && creature.materialID > 0)
-        {
-            m_materialSystem->BindMaterial(m_commandList.Get(), creature.materialID);
-        }
-        
-        // Render the creature mesh
+        // Render the creature mesh using simple pipeline
         creature.meshRenderer->Render(m_commandList.Get());
     }
     
@@ -1718,12 +1696,12 @@ bool GraphicsEngine::CreatePBRPipelineState()
     psoDesc.RasterizerState.FrontCounterClockwise = FALSE;
     psoDesc.RasterizerState.DepthClipEnable = TRUE;
     
-    // Depth/stencil state - ENABLED for proper 3D rendering
-    psoDesc.DepthStencilState.DepthEnable = TRUE;
+    // Depth/stencil state - TEMPORARILY DISABLED for debugging
+    psoDesc.DepthStencilState.DepthEnable = FALSE;
     psoDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
     psoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
     psoDesc.DepthStencilState.StencilEnable = FALSE;
-    psoDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
+    psoDesc.DSVFormat = DXGI_FORMAT_UNKNOWN;
     
     // Blend state
     D3D12_RENDER_TARGET_BLEND_DESC rtBlendDesc = {};
