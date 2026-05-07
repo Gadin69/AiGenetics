@@ -38,6 +38,31 @@ struct CameraConstants {
     DirectX::XMFLOAT4X4 projectionMatrix;
 };
 
+// Light constant buffer structure (must be 256-byte aligned)
+struct alignas(256) LightConstants {
+    DirectX::XMFLOAT3 sunDirection;      // Normalized sun direction
+    float sunIntensity;                   // Sun intensity multiplier
+    
+    DirectX::XMFLOAT3 sunColor;          // Sun color (RGB)
+    float ambientIntensity;              // Ambient light intensity
+    
+    DirectX::XMFLOAT3 ambientColor;      // Ambient light color (sky contribution)
+    float groundAmbientIntensity;         // Ground bounce light intensity
+    
+    DirectX::XMFLOAT3 groundAmbientColor; // Ground reflection color
+    float pad0;                           // Alignment padding
+};
+
+// Time of Day configuration
+struct TimeOfDayConfig {
+    float sunAngle;                       // Sun angle in radians (0 = sunrise, PI/2 = noon)
+    DirectX::XMFLOAT3 sunColor;          // Sun color at this TOD
+    DirectX::XMFLOAT3 skyZenithColor;    // Sky color at zenith (top)
+    DirectX::XMFLOAT3 skyHorizonColor;   // Sky color at horizon
+    DirectX::XMFLOAT3 groundColor;       // Ground ambient color
+    float ambientIntensity;               // Ambient intensity multiplier
+};
+
 class GraphicsEngine
 {
 public:
@@ -159,6 +184,28 @@ private:
     // HDR Renderer
     std::unique_ptr<HDRRenderer> m_hdrRenderer;
     
+    // Lighting system
+    Microsoft::WRL::ComPtr<ID3D12Resource> m_lightConstantBuffer;
+    LightConstants m_lightData = {};
+    UINT8* m_lightCBVData = nullptr;
+    
+    // Sky dome
+    Microsoft::WRL::ComPtr<ID3D12Resource> m_skyDomeVertexBuffer;
+    Microsoft::WRL::ComPtr<ID3D12Resource> m_skyDomeIndexBuffer;
+    Microsoft::WRL::ComPtr<ID3D12PipelineState> m_skyDomePipelineState;
+    D3D12_VERTEX_BUFFER_VIEW m_skyDomeVertexBufferView = {};
+    D3D12_INDEX_BUFFER_VIEW m_skyDomeIndexBufferView = {};
+    UINT m_skyDomeVertexCount = 0;
+    UINT m_skyDomeIndexCount = 0;
+    
+    // Shader blobs for sky dome
+    Microsoft::WRL::ComPtr<ID3DBlob> m_skyDomeVertexShaderBlob;
+    Microsoft::WRL::ComPtr<ID3DBlob> m_skyDomePixelShaderBlob;
+    
+    // TOD system
+    TimeOfDayConfig m_todConfig;
+    float m_currentTimeOfDay = 0.25f; // 0.0 = midnight, 0.25 = sunrise, 0.5 = noon, 0.75 = sunset
+    
     // Synchronization
     Microsoft::WRL::ComPtr<ID3D12Fence> m_fence;
     UINT64 m_fenceValues[FrameCount] = {};
@@ -192,6 +239,13 @@ private:
     bool CreatePBRWireframePipelineState();
     bool InitializePBRSystem();
     
+    // Lighting and sky dome methods
+    bool CreateLightConstantBuffer();
+    bool CreateSkyDome();
+    bool CreateSkyDomePipelineState();
+    void UpdateLightingFromTOD();
+    void RenderSkyDome();
+    
     // UI rendering
     void InitializeUIButton();
     void CheckButtonHover();
@@ -199,7 +253,7 @@ private:
     // Render loop helpers
     void UpdateCameraConstantBuffer(Engine::Rendering::BaseCameraController* camera);
     void PopulateCommandList(Engine::Rendering::BaseCameraController* camera, const std::vector<CreatureMeshData>& creatures);
-    void RenderCreatures(const std::vector<CreatureMeshData>& creatures);
+    void RenderCreatures(const std::vector<CreatureMeshData>& creatures, Engine::Rendering::BaseCameraController* camera);
     void WaitForPreviousFrame();
     void MoveToNextFrame();
     

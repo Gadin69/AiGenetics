@@ -244,13 +244,12 @@ bool GraphicsEngine::Initialize(HWND hWnd)
             return false;
         }
         
-        // Step 14: Initialize PBR system - TEMPORARILY DISABLED
-        // if (!InitializePBRSystem())
-        // {
-        //     std::cerr << "Failed to initialize PBR system" << std::endl;
-        //     return false;
-        // }
-        std::cout << "PBR system DISABLED (temporarily)" << std::endl;
+        // Step 14: Initialize PBR system
+        if (!InitializePBRSystem())
+        {
+            std::cerr << "Failed to initialize PBR system" << std::endl;
+            return false;
+        }
         
         std::cout << "DirectX 12 initialization completed successfully!" << std::endl;
         return true;
@@ -1292,8 +1291,13 @@ void GraphicsEngine::PopulateCommandList(Engine::Rendering::BaseCameraController
         m_rtvDescriptorSize
     );
     
-    // Change background color to RED for testing
-    const FLOAT clearColor[] = { 0.3f, 0.0f, 0.0f, 1.0f };  // Dark red
+    // Use TOD-driven clear color (sky horizon color)
+    const FLOAT clearColor[] = { 
+        m_todConfig.skyHorizonColor.x,
+        m_todConfig.skyHorizonColor.y,
+        m_todConfig.skyHorizonColor.z,
+        1.0f 
+    };
     m_commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
     
     // Clear depth buffer
@@ -1348,6 +1352,9 @@ void GraphicsEngine::PopulateCommandList(Engine::Rendering::BaseCameraController
     m_commandList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
     m_commandList->DrawInstanced(12, 1, 0, 0);
     
+    // Render sky dome (background)
+    RenderSkyDome();
+    
     // Render creature meshes
     static bool printed = false;
     if (!creatures.empty())
@@ -1356,7 +1363,7 @@ void GraphicsEngine::PopulateCommandList(Engine::Rendering::BaseCameraController
             std::cout << "[DEBUG] Rendering " << creatures.size() << " creatures" << std::endl;
             printed = true;
         }
-        RenderCreatures(creatures);
+        RenderCreatures(creatures, camera);
     } else {
         if (!printed) {
             std::cout << "[DEBUG] NO CREATURES TO RENDER!" << std::endl;
@@ -1373,7 +1380,7 @@ void GraphicsEngine::PopulateCommandList(Engine::Rendering::BaseCameraController
     }
 }
 
-void GraphicsEngine::RenderCreatures(const std::vector<CreatureMeshData>& creatures)
+void GraphicsEngine::RenderCreatures(const std::vector<CreatureMeshData>& creatures, Engine::Rendering::BaseCameraController* camera)
 {
     if (!m_commandList)
     {
@@ -1385,12 +1392,137 @@ void GraphicsEngine::RenderCreatures(const std::vector<CreatureMeshData>& creatu
     if (frameCounter < 3) {
         std::cout << "\n=== RenderCreatures Frame " << frameCounter << " ==="  << std::endl;
         std::cout << "Rendering " << creatures.size() << " creatures" << std::endl;
-        std::cout << "[Using SIMPLE pipeline (PBR disabled)]" << std::endl;
+        std::cout << "[Using PBR pipeline with lighting]" << std::endl;
     }
     
-    // Use simple pipeline for now (PBR is disabled)
-    m_commandList->SetGraphicsRootSignature(m_rootSignature.Get());
-    m_commandList->SetPipelineState(m_pipelineState.Get());
+    // Use PBR pipeline with lighting
+    m_commandList->SetGraphicsRootSignature(m_pbrRootSignature.Get());
+    m_commandList->SetPipelineState(
+        m_wireframeMode ? m_pbrWireframePipelineState.Get() : m_pbrPipelineState.Get()
+    );
+    
+    // CRITICAL: Bind view/projection matrix CBV (root parameter 0)
+    // This was causing creatures to be invisible - vertex shader was reading garbage GPU memory
+    m_commandList->SetGraphicsRootConstantBufferView(
+        0,
+        m_cameraConstantBuffer->GetGPUVirtualAddress()
+    );
+    
+    // Set default material constant buffer (b1) - creatures use vertex color for now
+    struct DefaultMaterialCB {
+        DirectX::XMFLOAT3 albedo;
+        float padding1;
+        float roughness;
+        float metallic;
+        float ambientOcclusion;
+        float emissiveIntensity;
+        DirectX::XMFLOAT3 emissive;
+        float padding2;
+    } defaultMaterial;
+    
+    defaultMaterial.albedo = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f); // White (use vertex color)
+    defaultMaterial.roughness = 0.6f;
+    defaultMaterial.metallic = 0.0f;
+    defaultMaterial.ambientOcclusion = 1.0f;
+    defaultMaterial.emissiveIntensity = 0.0f;
+    defaultMaterial.emissive = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
+    defaultMaterial.padding1 = 0.0f;
+    defaultMaterial.padding2 = 0.0f;
+    
+    // Create/upload material CB (static, created once)
+    static Microsoft::WRL::ComPtr<ID3D12Resource> materialBuffer;
+    static UINT8* materialData = nullptr;
+    
+    if (!materialBuffer)
+    {
+        D3D12_HEAP_PROPERTIES uploadHeapProps = {};
+        uploadHeapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
+        
+        D3D12_RESOURCE_DESC bufferDesc = {};
+        bufferDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+        bufferDesc.Width = sizeof(DefaultMaterialCB);
+        bufferDesc.Height = 1;
+        bufferDesc.DepthOrArraySize = 1;
+        bufferDesc.MipLevels = 1;
+        bufferDesc.Format = DXGI_FORMAT_UNKNOWN;
+        bufferDesc.SampleDesc.Count = 1;
+        bufferDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+        bufferDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+        
+        HRESULT hr = m_device->CreateCommittedResource(
+            &uploadHeapProps,
+            D3D12_HEAP_FLAG_NONE,
+            &bufferDesc,
+            D3D12_RESOURCE_STATE_GENERIC_READ,
+            nullptr,
+            IID_PPV_ARGS(&materialBuffer)
+        );
+        
+        if (SUCCEEDED(hr))
+        {
+            materialBuffer->Map(0, nullptr, reinterpret_cast<void**>(&materialData));
+        }
+    }
+    
+    if (materialData)
+    {
+        memcpy(materialData, &defaultMaterial, sizeof(DefaultMaterialCB));
+        m_commandList->SetGraphicsRootConstantBufferView(1, materialBuffer->GetGPUVirtualAddress());
+    }
+    
+    // Set light constant buffer (b2)
+    m_commandList->SetGraphicsRootConstantBufferView(2, m_lightConstantBuffer->GetGPUVirtualAddress());
+    
+    // Set camera position constant buffer (b3)
+    struct CameraPosCB {
+        DirectX::XMFLOAT3 position;
+        float pad;
+    } cameraPosCB;
+    // TODO: Add GetPosition() to BaseCameraController interface
+    // For now, use a default position (camera position is not critical for basic PBR)
+    cameraPosCB.position = DirectX::XMFLOAT3(0, 5, 10);
+    cameraPosCB.pad = 0.0f;
+    
+    // Create temporary upload buffer for camera position
+    static Microsoft::WRL::ComPtr<ID3D12Resource> cameraPosBuffer;
+    static UINT8* cameraPosData = nullptr;
+    
+    if (!cameraPosBuffer)
+    {
+        D3D12_HEAP_PROPERTIES uploadHeapProps = {};
+        uploadHeapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
+        
+        D3D12_RESOURCE_DESC bufferDesc = {};
+        bufferDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+        bufferDesc.Width = sizeof(CameraPosCB);
+        bufferDesc.Height = 1;
+        bufferDesc.DepthOrArraySize = 1;
+        bufferDesc.MipLevels = 1;
+        bufferDesc.Format = DXGI_FORMAT_UNKNOWN;
+        bufferDesc.SampleDesc.Count = 1;
+        bufferDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+        bufferDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+        
+        HRESULT hr = m_device->CreateCommittedResource(
+            &uploadHeapProps,
+            D3D12_HEAP_FLAG_NONE,
+            &bufferDesc,
+            D3D12_RESOURCE_STATE_GENERIC_READ,
+            nullptr,
+            IID_PPV_ARGS(&cameraPosBuffer)
+        );
+        
+        if (SUCCEEDED(hr))
+        {
+            cameraPosBuffer->Map(0, nullptr, reinterpret_cast<void**>(&cameraPosData));
+        }
+    }
+    
+    if (cameraPosData)
+    {
+        memcpy(cameraPosData, &cameraPosCB, sizeof(CameraPosCB));
+        m_commandList->SetGraphicsRootConstantBufferView(3, cameraPosBuffer->GetGPUVirtualAddress());
+    }
     
     // Render each creature mesh
     for (size_t i = 0; i < creatures.size(); ++i)
@@ -1415,7 +1547,7 @@ void GraphicsEngine::RenderCreatures(const std::vector<CreatureMeshData>& creatu
             continue;
         }
         
-        // Render the creature mesh using simple pipeline
+        // Render the creature mesh using PBR pipeline
         creature.meshRenderer->Render(m_commandList.Get());
     }
     
@@ -1515,6 +1647,25 @@ bool GraphicsEngine::InitializePBRSystem()
     }
     
     std::cout << "  PBR system initialized successfully" << std::endl;
+    
+    // Step 5: Initialize lighting and sky dome
+    if (!CreateLightConstantBuffer())
+    {
+        std::cerr << "  Failed to create light constant buffer" << std::endl;
+        return false;
+    }
+    
+    if (!CreateSkyDome())
+    {
+        std::cerr << "  Failed to create sky dome" << std::endl;
+        return false;
+    }
+    
+    if (!CreateSkyDomePipelineState())
+    {
+        std::cerr << "  Failed to create sky dome PSO" << std::endl;
+        return false;
+    }
     
     // Step 6: Initialize UI button
     InitializeUIButton();
@@ -1666,14 +1817,14 @@ bool GraphicsEngine::CreatePBRPipelineState()
 {
     std::cout << "  Creating PBR pipeline state object..." << std::endl;
     
-    // Define input layout for PBR (position, normal, texcoord)
+    // Define input layout for PBR (position, normal, color)
     D3D12_INPUT_ELEMENT_DESC inputLayout[] =
     {
         { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, 
           D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
         { "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, 
           D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-        { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 24, 
+        { "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 24, 
           D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
     };
     
@@ -1690,18 +1841,18 @@ bool GraphicsEngine::CreatePBRPipelineState()
         m_pbrPixelShaderBlob->GetBufferSize() 
     };
     
-    // Rasterizer state
+    // Rasterizer state - TEMPORARILY disable culling for debugging
     psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
-    psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_BACK;
+    psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE; // Disable culling
     psoDesc.RasterizerState.FrontCounterClockwise = FALSE;
     psoDesc.RasterizerState.DepthClipEnable = TRUE;
     
-    // Depth/stencil state - TEMPORARILY DISABLED for debugging
-    psoDesc.DepthStencilState.DepthEnable = FALSE;
+    // Depth/stencil state - ENABLED for proper depth testing
+    psoDesc.DepthStencilState.DepthEnable = TRUE;
     psoDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
     psoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
     psoDesc.DepthStencilState.StencilEnable = FALSE;
-    psoDesc.DSVFormat = DXGI_FORMAT_UNKNOWN;
+    psoDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
     
     // Blend state
     D3D12_RENDER_TARGET_BLEND_DESC rtBlendDesc = {};
@@ -1738,14 +1889,14 @@ bool GraphicsEngine::CreatePBRWireframePipelineState()
 {
     std::cout << "  Creating PBR wireframe pipeline state object..." << std::endl;
     
-    // Define input layout for PBR (position, normal, texcoord)
+    // Define input layout for PBR (position, normal, color)
     D3D12_INPUT_ELEMENT_DESC inputLayout[] =
     {
         { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, 
           D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
         { "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, 
           D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-        { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 24, 
+        { "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 24, 
           D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
     };
     
@@ -1871,6 +2022,368 @@ void GraphicsEngine::OnMouseClick(int x, int y)
         
         std::cout << "[Wireframe] Toggled to: " << (m_wireframeMode ? "ON" : "OFF") << std::endl;
     }
+}
+
+// ============================================================================
+// Lighting and Sky Dome Implementation
+// ============================================================================
+
+bool GraphicsEngine::CreateLightConstantBuffer()
+{
+    std::cout << "  Creating light constant buffer..." << std::endl;
+    
+    // Initialize TOD config with default values
+    m_todConfig.sunAngle = 0.0f;
+    m_todConfig.sunColor = { 1.0f, 0.95f, 0.8f };
+    m_todConfig.skyZenithColor = { 0.3f, 0.5f, 0.9f };  // Blue sky
+    m_todConfig.skyHorizonColor = { 0.6f, 0.75f, 0.95f }; // Lighter blue at horizon
+    m_todConfig.groundColor = { 0.2f, 0.25f, 0.15f };   // Dark green-brown ground
+    m_todConfig.ambientIntensity = 0.3f;
+    
+    // Create upload heap for light constant buffer
+    D3D12_HEAP_PROPERTIES uploadHeapProps = {};
+    uploadHeapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
+    uploadHeapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+    uploadHeapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+    uploadHeapProps.CreationNodeMask = 1;
+    uploadHeapProps.VisibleNodeMask = 1;
+    
+    D3D12_RESOURCE_DESC bufferDesc = {};
+    bufferDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+    bufferDesc.Width = sizeof(LightConstants);
+    bufferDesc.Height = 1;
+    bufferDesc.DepthOrArraySize = 1;
+    bufferDesc.MipLevels = 1;
+    bufferDesc.Format = DXGI_FORMAT_UNKNOWN;
+    bufferDesc.SampleDesc.Count = 1;
+    bufferDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+    bufferDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+    
+    HRESULT hr = m_device->CreateCommittedResource(
+        &uploadHeapProps,
+        D3D12_HEAP_FLAG_NONE,
+        &bufferDesc,
+        D3D12_RESOURCE_STATE_GENERIC_READ,
+        nullptr,
+        IID_PPV_ARGS(&m_lightConstantBuffer)
+    );
+    
+    if (FAILED(hr))
+    {
+        std::cerr << "Failed to create light constant buffer" << std::endl;
+        return false;
+    }
+    
+    // Map the buffer
+    hr = m_lightConstantBuffer->Map(0, nullptr, reinterpret_cast<void**>(&m_lightCBVData));
+    if (FAILED(hr))
+    {
+        std::cerr << "Failed to map light constant buffer" << std::endl;
+        return false;
+    }
+    
+    // Initialize with default lighting
+    UpdateLightingFromTOD();
+    
+    std::cout << "  Light constant buffer created successfully" << std::endl;
+    return true;
+}
+
+bool GraphicsEngine::CreateSkyDome()
+{
+    std::cout << "  Creating sky dome geometry..." << std::endl;
+    
+    // Create a sphere mesh (radius = 500.0f)
+    const float radius = 500.0f;
+    const int slices = 32;
+    const int stacks = 16;
+    
+    std::vector<DirectX::XMFLOAT3> vertices;
+    std::vector<uint32_t> indices;
+    
+    // Generate sphere vertices
+    for (int stack = 0; stack <= stacks; stack++)
+    {
+        float phi = DirectX::XM_PI * stack / stacks; // 0 to PI
+        float y = radius * cosf(phi);
+        float ringRadius = radius * sinf(phi);
+        
+        for (int slice = 0; slice <= slices; slice++)
+        {
+            float theta = 2.0f * DirectX::XM_PI * slice / slices; // 0 to 2*PI
+            float x = ringRadius * cosf(theta);
+            float z = ringRadius * sinf(theta);
+            
+            vertices.push_back({ x, y, z });
+        }
+    }
+    
+    // Generate indices
+    for (int stack = 0; stack < stacks; stack++)
+    {
+        for (int slice = 0; slice < slices; slice++)
+        {
+            uint32_t current = stack * (slices + 1) + slice;
+            uint32_t next = current + slices + 1;
+            
+            // Two triangles per quad
+            indices.push_back(current);
+            indices.push_back(next);
+            indices.push_back(current + 1);
+            
+            indices.push_back(current + 1);
+            indices.push_back(next);
+            indices.push_back(next + 1);
+        }
+    }
+    
+    m_skyDomeVertexCount = static_cast<UINT>(vertices.size());
+    m_skyDomeIndexCount = static_cast<UINT>(indices.size());
+    
+    // Create upload buffer for vertices
+    D3D12_HEAP_PROPERTIES uploadHeapProps = {};
+    uploadHeapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
+    
+    D3D12_RESOURCE_DESC vertexUploadDesc = {};
+    vertexUploadDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+    vertexUploadDesc.Width = vertices.size() * sizeof(DirectX::XMFLOAT3);
+    vertexUploadDesc.Height = 1;
+    vertexUploadDesc.DepthOrArraySize = 1;
+    vertexUploadDesc.MipLevels = 1;
+    vertexUploadDesc.Format = DXGI_FORMAT_UNKNOWN;
+    vertexUploadDesc.SampleDesc.Count = 1;
+    vertexUploadDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+    vertexUploadDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+    
+    HRESULT hr = m_device->CreateCommittedResource(
+        &uploadHeapProps,
+        D3D12_HEAP_FLAG_NONE,
+        &vertexUploadDesc,
+        D3D12_RESOURCE_STATE_GENERIC_READ,
+        nullptr,
+        IID_PPV_ARGS(&m_skyDomeVertexBuffer)
+    );
+    
+    if (FAILED(hr))
+    {
+        std::cerr << "Failed to create sky dome vertex buffer" << std::endl;
+        return false;
+    }
+    
+    // Copy vertex data
+    void* pVertexData;
+    m_skyDomeVertexBuffer->Map(0, nullptr, &pVertexData);
+    memcpy(pVertexData, vertices.data(), vertices.size() * sizeof(DirectX::XMFLOAT3));
+    m_skyDomeVertexBuffer->Unmap(0, nullptr);
+    
+    m_skyDomeVertexBufferView.BufferLocation = m_skyDomeVertexBuffer->GetGPUVirtualAddress();
+    m_skyDomeVertexBufferView.StrideInBytes = sizeof(DirectX::XMFLOAT3);
+    m_skyDomeVertexBufferView.SizeInBytes = static_cast<UINT>(vertexUploadDesc.Width);
+    
+    // Create upload buffer for indices
+    D3D12_RESOURCE_DESC indexUploadDesc = {};
+    indexUploadDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+    indexUploadDesc.Width = indices.size() * sizeof(uint32_t);
+    indexUploadDesc.Height = 1;
+    indexUploadDesc.DepthOrArraySize = 1;
+    indexUploadDesc.MipLevels = 1;
+    indexUploadDesc.Format = DXGI_FORMAT_UNKNOWN;
+    indexUploadDesc.SampleDesc.Count = 1;
+    indexUploadDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+    indexUploadDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+    
+    hr = m_device->CreateCommittedResource(
+        &uploadHeapProps,
+        D3D12_HEAP_FLAG_NONE,
+        &indexUploadDesc,
+        D3D12_RESOURCE_STATE_GENERIC_READ,
+        nullptr,
+        IID_PPV_ARGS(&m_skyDomeIndexBuffer)
+    );
+    
+    if (FAILED(hr))
+    {
+        std::cerr << "Failed to create sky dome index buffer" << std::endl;
+        return false;
+    }
+    
+    // Copy index data
+    void* pIndexData;
+    m_skyDomeIndexBuffer->Map(0, nullptr, &pIndexData);
+    memcpy(pIndexData, indices.data(), indices.size() * sizeof(uint32_t));
+    m_skyDomeIndexBuffer->Unmap(0, nullptr);
+    
+    m_skyDomeIndexBufferView.BufferLocation = m_skyDomeIndexBuffer->GetGPUVirtualAddress();
+    m_skyDomeIndexBufferView.Format = DXGI_FORMAT_R32_UINT;
+    m_skyDomeIndexBufferView.SizeInBytes = static_cast<UINT>(indexUploadDesc.Width);
+    
+    std::cout << "  Sky dome created successfully (" << m_skyDomeVertexCount 
+              << " vertices, " << m_skyDomeIndexCount << " indices)" << std::endl;
+    return true;
+}
+
+bool GraphicsEngine::CreateSkyDomePipelineState()
+{
+    std::cout << "  Creating sky dome pipeline state..." << std::endl;
+    
+    // Compile shaders
+    ShaderIncludeHandler includeHandler;
+    UINT compileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
+    
+    HRESULT hr = D3DCompileFromFile(
+        L"SkyDomeVertex.hlsl",
+        nullptr,
+        &includeHandler,
+        "main",
+        "vs_5_1",
+        compileFlags,
+        0,
+        &m_skyDomeVertexShaderBlob,
+        nullptr
+    );
+    
+    if (FAILED(hr))
+    {
+        std::cerr << "Failed to compile sky dome vertex shader" << std::endl;
+        return false;
+    }
+    
+    hr = D3DCompileFromFile(
+        L"SkyDomePixel.hlsl",
+        nullptr,
+        &includeHandler,
+        "main",
+        "ps_5_1",
+        compileFlags,
+        0,
+        &m_skyDomePixelShaderBlob,
+        nullptr
+    );
+    
+    if (FAILED(hr))
+    {
+        std::cerr << "Failed to compile sky dome pixel shader" << std::endl;
+        return false;
+    }
+    
+    // Input layout: position only
+    D3D12_INPUT_ELEMENT_DESC inputLayout[] =
+    {
+        { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, 
+          D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+    };
+    
+    // Create PSO
+    D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
+    psoDesc.InputLayout = { inputLayout, _countof(inputLayout) };
+    psoDesc.pRootSignature = m_pbrRootSignature.Get();
+    psoDesc.VS = { m_skyDomeVertexShaderBlob->GetBufferPointer(), m_skyDomeVertexShaderBlob->GetBufferSize() };
+    psoDesc.PS = { m_skyDomePixelShaderBlob->GetBufferPointer(), m_skyDomePixelShaderBlob->GetBufferSize() };
+    
+    // Rasterizer state - render back faces (inside of dome)
+    psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
+    psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_FRONT; // Cull outside faces
+    psoDesc.RasterizerState.FrontCounterClockwise = FALSE;
+    psoDesc.RasterizerState.DepthClipEnable = TRUE;
+    
+    // Depth state - Read only, don't write (creatures must render in front of sky)
+    psoDesc.DepthStencilState.DepthEnable = TRUE;
+    psoDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO; // DON'T write depth
+    psoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+    psoDesc.DepthStencilState.StencilEnable = FALSE;
+    psoDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
+    
+    // Blend state
+    D3D12_RENDER_TARGET_BLEND_DESC rtBlendDesc = {};
+    rtBlendDesc.BlendEnable = FALSE;
+    rtBlendDesc.LogicOpEnable = FALSE;
+    rtBlendDesc.SrcBlend = D3D12_BLEND_ONE;
+    rtBlendDesc.DestBlend = D3D12_BLEND_ZERO;
+    rtBlendDesc.BlendOp = D3D12_BLEND_OP_ADD;
+    rtBlendDesc.SrcBlendAlpha = D3D12_BLEND_ONE;
+    rtBlendDesc.DestBlendAlpha = D3D12_BLEND_ZERO;
+    rtBlendDesc.BlendOpAlpha = D3D12_BLEND_OP_ADD;
+    rtBlendDesc.LogicOp = D3D12_LOGIC_OP_NOOP;
+    rtBlendDesc.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+    
+    psoDesc.BlendState.RenderTarget[0] = rtBlendDesc;
+    
+    psoDesc.SampleMask = UINT_MAX;
+    psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+    psoDesc.NumRenderTargets = 1;
+    psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+    psoDesc.SampleDesc = { 1, 0 };
+    
+    hr = m_device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_skyDomePipelineState));
+    if (FAILED(hr))
+    {
+        std::cerr << "Failed to create sky dome pipeline state" << std::endl;
+        return false;
+    }
+    
+    std::cout << "  Sky dome pipeline state created successfully" << std::endl;
+    return true;
+}
+
+void GraphicsEngine::UpdateLightingFromTOD()
+{
+    // Calculate sun direction from angle
+    m_todConfig.sunAngle = m_currentTimeOfDay * 2.0f * DirectX::XM_PI;
+    
+    // Sun direction (circular path)
+    m_lightData.sunDirection = {
+        cosf(m_todConfig.sunAngle),
+        sinf(m_todConfig.sunAngle),
+        0.3f // Slight offset for visual interest
+    };
+    
+    // Normalize
+    float len = sqrtf(
+        m_lightData.sunDirection.x * m_lightData.sunDirection.x +
+        m_lightData.sunDirection.y * m_lightData.sunDirection.y +
+        m_lightData.sunDirection.z * m_lightData.sunDirection.z
+    );
+    m_lightData.sunDirection.x /= len;
+    m_lightData.sunDirection.y /= len;
+    m_lightData.sunDirection.z /= len;
+    
+    // Set TOD-driven colors
+    m_lightData.sunColor = m_todConfig.sunColor;
+    m_lightData.sunIntensity = 1.5f;
+    
+    m_lightData.ambientColor = m_todConfig.skyZenithColor;
+    m_lightData.ambientIntensity = m_todConfig.ambientIntensity;
+    
+    m_lightData.groundAmbientColor = m_todConfig.groundColor;
+    m_lightData.groundAmbientIntensity = 0.15f;
+    
+    // Copy to GPU
+    memcpy(m_lightCBVData, &m_lightData, sizeof(LightConstants));
+}
+
+void GraphicsEngine::RenderSkyDome()
+{
+    if (!m_commandList || !m_skyDomePipelineState)
+        return;
+    
+    // Set sky dome PSO
+    m_commandList->SetPipelineState(m_skyDomePipelineState.Get());
+    m_commandList->SetGraphicsRootSignature(m_pbrRootSignature.Get());
+    
+    // CRITICAL: Bind view/projection matrix CBV (root parameter 0)
+    // SkyDomeVertex.hlsl also requires b0 for view/projection transforms
+    m_commandList->SetGraphicsRootConstantBufferView(
+        0,
+        m_cameraConstantBuffer->GetGPUVirtualAddress()
+    );
+    
+    // Set vertex/index buffers
+    m_commandList->IASetVertexBuffers(0, 1, &m_skyDomeVertexBufferView);
+    m_commandList->IASetIndexBuffer(&m_skyDomeIndexBufferView);
+    m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    
+    // Draw sky dome
+    m_commandList->DrawIndexedInstanced(m_skyDomeIndexCount, 1, 0, 0, 0);
 }
 
 

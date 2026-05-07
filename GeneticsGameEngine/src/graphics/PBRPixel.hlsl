@@ -1,0 +1,125 @@
+// PBR Pixel Shader - Cook-Torrance BRDF
+cbuffer LightConstants : register(b2)
+{
+    float3 sunDirection;
+    float sunIntensity;
+    
+    float3 sunColor;
+    float ambientIntensity;
+    
+    float3 ambientColor;
+    float groundAmbientIntensity;
+    
+    float3 groundAmbientColor;
+    float pad0;
+};
+
+cbuffer CameraPosition : register(b3)
+{
+    float3 cameraPosition;
+    float pad1;
+};
+
+struct PS_INPUT
+{
+    float4 position : SV_POSITION;
+    float3 worldPosition : POSITION0;
+    float3 worldNormal : NORMAL0;
+    float4 baseColor : COLOR0;
+};
+
+// Fresnel-Schlick approximation
+float3 FresnelSchlick(float cosTheta, float3 F0)
+{
+    return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
+}
+
+// Normal Distribution Function - GGX/Trowbridge-Reitz
+float DistributionGGX(float3 N, float3 H, float roughness)
+{
+    float a = roughness * roughness;
+    float a2 = a * a;
+    float NdotH = max(dot(N, H), 0.0);
+    float NdotH2 = NdotH * NdotH;
+    
+    float denom = NdotH2 * (a2 - 1.0) + 1.0;
+    return a2 / (3.14159265 * denom * denom);
+}
+
+// Geometry Function - Schlick-GGX
+float GeometrySchlickGGX(float NdotV, float roughness)
+{
+    float r = roughness + 1.0;
+    float k = (r * r) / 8.0;
+    return NdotV / (NdotV * (1.0 - k) + k);
+}
+
+float GeometrySmith(float3 N, float3 V, float3 L, float roughness)
+{
+    float NdotV = max(dot(N, V), 0.0);
+    float NdotL = max(dot(N, L), 0.0);
+    float ggx1 = GeometrySchlickGGX(NdotV, roughness);
+    float ggx2 = GeometrySchlickGGX(NdotL, roughness);
+    return ggx1 * ggx2;
+}
+
+float4 main(PS_INPUT input) : SV_TARGET
+{
+    float3 N = normalize(input.worldNormal);
+    float3 V = normalize(cameraPosition - input.worldPosition);
+    float3 baseColor = input.baseColor.rgb;
+    
+    // PBR material parameters (can be driven by genetics later)
+    float metallic = 0.0;    // Creatures are dielectric (non-metallic)
+    float roughness = 0.6;   // Moderate roughness for organic surfaces
+    
+    // Calculate F0 (reflectance at normal incidence)
+    float3 F0 = float3(0.04, 0.04, 0.04); // Dielectric F0
+    F0 = lerp(F0, baseColor, metallic);
+    
+    // Ambient lighting
+    float3 ambient = baseColor * ambientColor * ambientIntensity;
+    
+    // Direct lighting (sun)
+    float3 Lo = float3(0.0, 0.0, 0.0);
+    
+    float3 L = normalize(-sunDirection);
+    float3 H = normalize(V + L);
+    
+    float NdotL = max(dot(N, L), 0.0);
+    
+    if (NdotL > 0.0)
+    {
+        // Cook-Torrance BRDF
+        float NDF = DistributionGGX(N, H, roughness);
+        float G = GeometrySmith(N, V, L, roughness);
+        float3 F = FresnelSchlick(max(dot(H, V), 0.0), F0);
+        
+        // specular = (NDF * G * F) / (4 * (N.V) * (N.L))
+        float3 numerator = NDF * G * F;
+        float denominator = 4.0 * max(dot(N, V), 0.0) * NdotL + 0.0001;
+        float3 specular = numerator / denominator;
+        
+        // kD = 1 - kS (energy conservation)
+        float3 kS = F;
+        float3 kD = float3(1.0, 1.0, 1.0) - kS;
+        kD *= 1.0 - metallic;
+        
+        // Radiance equation
+        Lo += (kD * baseColor / 3.14159265 + specular) * sunColor * sunIntensity * NdotL;
+    }
+    
+    // Ground ambient (bounce light)
+    float3 groundAmbient = baseColor * groundAmbientColor * groundAmbientIntensity * 0.5;
+    
+    // Final color
+    float3 result = ambient + Lo + groundAmbient;
+    
+    // Tone mapping (simple Reinhard)
+    result = result / (result + float3(1.0, 1.0, 1.0));
+    
+    // Gamma correction
+    result = pow(result, float3(1.0/2.2, 1.0/2.2, 1.0/2.2));
+    
+    return float4(result, input.baseColor.a);
+}
