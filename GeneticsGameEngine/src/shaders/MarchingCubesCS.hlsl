@@ -165,23 +165,31 @@ void CSMain(uint3 dispatchThreadID : SV_DispatchThreadID) {
         vertList[11] = VertexInterp(IsoValue, p[3], p[7], cubeValues[3], cubeValues[7]);
     
     // Build triangles using triTable
-    uint currentCount;
-    TriangleCount.InterlockedAdd(0, 0, currentCount);
-    
-    uint triOffset = currentCount;
+    // First, count how many triangles this cube will produce
     uint triCount = 0;
+    for (uint i = 0; triTable[cubeIndex][i] != -1; i += 3) {
+        triCount++;
+    }
+    
+    // Atomically reserve space BEFORE writing
+    uint triOffset;
+    TriangleCount.InterlockedAdd(0, triCount, triOffset);
+    
+    // Now write vertices sequentially (3 vertices per triangle)
+    uint baseVertex = triOffset * 3;
+    uint triangleIdx = 0;
     
     for (uint i = 0; triTable[cubeIndex][i] != -1; i += 3) {
         uint v0 = triTable[cubeIndex][i];
         uint v1 = triTable[cubeIndex][i + 1];
         uint v2 = triTable[cubeIndex][i + 2];
         
-        uint idx = triOffset + triCount;
-        VertexBuffer[idx] = vertList[v0];
-        IndexBuffer[idx] = uint3(idx * 3, idx * 3 + 1, idx * 3 + 2);
+        uint writeIndex = baseVertex + (triangleIdx * 3);
         
-        triCount++;
+        VertexBuffer[writeIndex + 0] = vertList[v0];
+        VertexBuffer[writeIndex + 1] = vertList[v1];
+        VertexBuffer[writeIndex + 2] = vertList[v2];
+        
+        triangleIdx++;
     }
-    
-    TriangleCount.InterlockedAdd(0, triCount);
 }

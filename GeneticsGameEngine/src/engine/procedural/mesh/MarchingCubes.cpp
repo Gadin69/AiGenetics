@@ -2,6 +2,9 @@
 #include "../voxel/VoxelGrid.h"
 #include <cmath>
 #include <iostream>
+#include <unordered_map>
+#include <tuple>
+#include <algorithm>
 
 namespace Engine {
 namespace Procedural {
@@ -399,6 +402,25 @@ MeshData MarchingCubes::GenerateMesh(const Voxel::VoxelGrid& grid, float isovalu
         int cubeCount = 0;
         int triangleCount = 0;
         
+        // Edge-based vertex cache for proper vertex sharing
+        // Each edge is identified by (x, y, z, edgeIndex) where edgeIndex is 0-11
+        // This ensures adjacent cubes sharing an edge use the exact same vertex
+        struct EdgeKey {
+            int x, y, z, edge;
+            bool operator==(const EdgeKey& other) const {
+                return x == other.x && y == other.y && z == other.z && edge == other.edge;
+            }
+        };
+        
+        struct EdgeKeyHash {
+            size_t operator()(const EdgeKey& key) const {
+                return std::hash<int>()(key.x) ^ (std::hash<int>()(key.y) << 1) ^ 
+                       (std::hash<int>()(key.z) << 2) ^ (std::hash<int>()(key.edge) << 3);
+            }
+        };
+        
+        std::unordered_map<EdgeKey, uint32_t, EdgeKeyHash> edgeVertexCache;
+        
         for (int z = 0; z < sizeZ - 1; z++) {
             for (int y = 0; y < sizeY - 1; y++) {
                 for (int x = 0; x < sizeX - 1; x++) {
@@ -475,14 +497,26 @@ MeshData MarchingCubes::GenerateMesh(const Voxel::VoxelGrid& grid, float isovalu
                         vertList[11] = VertexInterp(isovalue, p[3], p[7], cubeValues[3], cubeValues[7]);
                     
                     // 6. Get triangle vertex indices from triTable
-                    // NOTE: triTable currently only has 182/256 entries populated
-                    // Entries 182-255 contain garbage data and will be skipped
-                    const int VALID_TRI_TABLE_ENTRIES = 182;
+                    // All 256 entries are populated in the triTable
                     
-                    if (cubeIndex >= VALID_TRI_TABLE_ENTRIES) {
-                        // Skip unpopulated entries to avoid memory corruption
-                        continue;
-                    }
+                    // Lambda to get or create vertex for a specific edge
+                    auto getEdgeVertex = [&](int edgeIdx, const DirectX::XMFLOAT3& position) -> uint32_t {
+                        // Create edge key based on cube position and edge index
+                        EdgeKey edgeKey = {x, y, z, edgeIdx};
+                        
+                        // Check if this edge already has a vertex cached
+                        auto it = edgeVertexCache.find(edgeKey);
+                        if (it != edgeVertexCache.end()) {
+                            return it->second; // Return cached vertex index
+                        }
+                        
+                        // Create new vertex and cache it
+                        uint32_t newIndex = static_cast<uint32_t>(result.vertices.size());
+                        result.vertices.push_back(position);
+                        result.normals.push_back(CalculateNormalAtVertex(position, grid, isovalue));
+                        edgeVertexCache[edgeKey] = newIndex;
+                        return newIndex;
+                    };
                     
                     for (int i = 0; triTable[cubeIndex][i] != -1; i += 3) {
                         uint32_t v0Idx = triTable[cubeIndex][i];
@@ -496,21 +530,20 @@ MeshData MarchingCubes::GenerateMesh(const Voxel::VoxelGrid& grid, float isovalu
                             continue;
                         }
                         
-                        // Add vertices
-                        result.vertices.push_back(vertList[v0Idx]);
-                        result.vertices.push_back(vertList[v1Idx]);
-                        result.vertices.push_back(vertList[v2Idx]);
+                        // Get the three vertices for this triangle
+                        const auto& vert0 = vertList[v0Idx];
+                        const auto& vert1 = vertList[v1Idx];
+                        const auto& vert2 = vertList[v2Idx];
                         
-                        // Calculate normals for smooth shading
-                        result.normals.push_back(CalculateNormalAtVertex(vertList[v0Idx], grid, isovalue));
-                        result.normals.push_back(CalculateNormalAtVertex(vertList[v1Idx], grid, isovalue));
-                        result.normals.push_back(CalculateNormalAtVertex(vertList[v2Idx], grid, isovalue));
+                        // Get or create vertex indices using edge-based caching
+                        uint32_t idx0 = getEdgeVertex(v0Idx, vert0);
+                        uint32_t idx1 = getEdgeVertex(v1Idx, vert1);
+                        uint32_t idx2 = getEdgeVertex(v2Idx, vert2);
                         
-                        // Add indices
-                        uint32_t baseIdx = static_cast<uint32_t>(result.indices.size());
-                        result.indices.push_back(baseIdx);
-                        result.indices.push_back(baseIdx + 1);
-                        result.indices.push_back(baseIdx + 2);
+                        // Add triangle indices - SWAP idx1 and idx2 to reverse winding for clockwise rasterization
+                        result.indices.push_back(idx0);
+                        result.indices.push_back(idx2);  // Swapped
+                        result.indices.push_back(idx1);  // Swapped
                         
                         triangleCount++;
                     }
@@ -524,6 +557,15 @@ MeshData MarchingCubes::GenerateMesh(const Voxel::VoxelGrid& grid, float isovalu
             }
         }
         
+        // DEBUG: Print first 20 indices to verify correctness
+        std::cout << "      DEBUG - First 20 indices:" << std::endl;
+        for (size_t i = 0; i < std::min((size_t)20, result.indices.size()); ++i) {
+            std::cout << "        Index[" << i << "] = " << result.indices[i];
+            if (result.indices[i] >= result.vertices.size()) {
+                std::cout << " *** OUT OF BOUNDS! ***";
+            }
+            std::cout << std::endl;
+        }
         std::cout << "      GenerateMesh complete: " << cubeCount << " cubes processed, " 
                  << triangleCount << " triangles generated" << std::endl;
         

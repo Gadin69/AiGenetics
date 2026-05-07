@@ -21,7 +21,7 @@ bool ProceduralMeshRenderer::Initialize(ID3D12Device* device) {
 }
 
 bool ProceduralMeshRenderer::UpdateMesh(const MeshData& mesh, ID3D12GraphicsCommandList* commandList) {
-    if (!m_device || mesh.vertices.empty() || mesh.indices.empty()) {
+    if (!m_device || mesh.vertices.empty()) {
         return false;
     }
     
@@ -33,7 +33,7 @@ bool ProceduralMeshRenderer::UpdateMesh(const MeshData& mesh, ID3D12GraphicsComm
     // Upload mesh data to GPU
     UploadMeshData(mesh, commandList);
     
-    m_indexCount = static_cast<UINT>(mesh.indices.size());
+    m_vertexCount = static_cast<UINT>(mesh.vertices.size());
     return true;
 }
 
@@ -42,21 +42,25 @@ void ProceduralMeshRenderer::Render(ID3D12GraphicsCommandList* commandList) cons
         return;
     }
     
-    // Set vertex and index buffers
+    // Set vertex and index buffers for indexed drawing
     commandList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
     commandList->IASetIndexBuffer(&m_indexBufferView);
     commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     
-    // Draw indexed
+    // Draw indexed triangles (vertices are shared via index buffer)
     commandList->DrawIndexedInstanced(m_indexCount, 1, 0, 0, 0);
 }
 
 bool ProceduralMeshRenderer::CreateGPUResources(const MeshData& mesh) {
+    // Store counts
+    m_vertexCount = static_cast<UINT>(mesh.vertices.size());
+    m_indexCount = static_cast<UINT>(mesh.indices.size());
+    
     // Create vertex buffer (default heap)
+    // Vertex layout: POSITION (float3) + NORMAL (float3) + COLOR (float4) = 10 floats = 40 bytes
     D3D12_RESOURCE_DESC vertexBufferDesc = {};
     vertexBufferDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-    vertexBufferDesc.Width = mesh.vertices.size() * sizeof(DirectX::XMFLOAT3) + 
-                             mesh.normals.size() * sizeof(DirectX::XMFLOAT3);
+    vertexBufferDesc.Width = mesh.vertices.size() * (sizeof(DirectX::XMFLOAT3) * 2 + sizeof(DirectX::XMFLOAT4)); // 40 bytes per vertex
     vertexBufferDesc.Height = 1;
     vertexBufferDesc.DepthOrArraySize = 1;
     vertexBufferDesc.MipLevels = 1;
@@ -141,36 +145,49 @@ bool ProceduralMeshRenderer::CreateGPUResources(const MeshData& mesh) {
     
     // Set buffer views
     m_vertexBufferView.BufferLocation = m_vertexBuffer->GetGPUVirtualAddress();
-    m_vertexBufferView.StrideInBytes = sizeof(DirectX::XMFLOAT3) * 2; // position + normal
+    m_vertexBufferView.StrideInBytes = sizeof(DirectX::XMFLOAT3) * 2 + sizeof(DirectX::XMFLOAT4); // position + normal + color = 40 bytes
     m_vertexBufferView.SizeInBytes = static_cast<UINT>(vertexBufferDesc.Width);
     
     m_indexBufferView.BufferLocation = m_indexBuffer->GetGPUVirtualAddress();
-    m_indexBufferView.Format = DXGI_FORMAT_R32_UINT;
+    m_indexBufferView.Format = DXGI_FORMAT_R32_UINT; // 32-bit unsigned integers
     m_indexBufferView.SizeInBytes = static_cast<UINT>(indexBufferDesc.Width);
     
     return true;
 }
 
 void ProceduralMeshRenderer::UploadMeshData(const MeshData& mesh, ID3D12GraphicsCommandList* commandList) {
-    // Combine vertices and normals into interleaved format
+    // Combine vertices, normals, and color into interleaved format
+    // Shader expects: POSITION (float3) + NORMAL (float3) + COLOR (float4) = 10 floats = 40 bytes
     std::vector<float> vertexData;
-    vertexData.reserve(mesh.vertices.size() * 6); // 3 for position + 3 for normal
+    vertexData.reserve(mesh.vertices.size() * 10); // 3 for position + 3 for normal + 4 for color
     
     for (size_t i = 0; i < mesh.vertices.size(); ++i) {
+        // Position
         vertexData.push_back(mesh.vertices[i].x);
         vertexData.push_back(mesh.vertices[i].y);
         vertexData.push_back(mesh.vertices[i].z);
         
+        // Normal
         if (i < mesh.normals.size()) {
             vertexData.push_back(mesh.normals[i].x);
             vertexData.push_back(mesh.normals[i].y);
             vertexData.push_back(mesh.normals[i].z);
         } else {
+            // Default normal if missing
             vertexData.push_back(0.0f);
             vertexData.push_back(1.0f);
-            vertexData.push_back(0.0f); // Default normal
+            vertexData.push_back(0.0f);
         }
+        
+        // Color (default white with full alpha)
+        vertexData.push_back(1.0f);  // R
+        vertexData.push_back(1.0f);  // G
+        vertexData.push_back(1.0f);  // B
+        vertexData.push_back(1.0f);  // A
     }
+    
+    // Prepare index data
+    std::vector<uint32_t> indexData(mesh.indices.begin(), mesh.indices.end());
     
     // Map upload buffers and copy data
     void* pVertexData;
@@ -180,14 +197,14 @@ void ProceduralMeshRenderer::UploadMeshData(const MeshData& mesh, ID3D12Graphics
     
     void* pIndexData;
     m_indexUploadBuffer->Map(0, nullptr, &pIndexData);
-    memcpy(pIndexData, mesh.indices.data(), mesh.indices.size() * sizeof(uint32_t));
+    memcpy(pIndexData, indexData.data(), indexData.size() * sizeof(uint32_t));
     m_indexUploadBuffer->Unmap(0, nullptr);
     
     // Copy from upload heap to default heap
     commandList->CopyBufferRegion(m_vertexBuffer.Get(), 0, m_vertexUploadBuffer.Get(), 0, vertexData.size() * sizeof(float));
-    commandList->CopyBufferRegion(m_indexBuffer.Get(), 0, m_indexUploadBuffer.Get(), 0, mesh.indices.size() * sizeof(uint32_t));
+    commandList->CopyBufferRegion(m_indexBuffer.Get(), 0, m_indexUploadBuffer.Get(), 0, indexData.size() * sizeof(uint32_t));
     
-    // Transition resources to vertex/index buffer state
+    // Transition resources to proper state
     D3D12_RESOURCE_BARRIER vertexBarrier;
     vertexBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
     vertexBarrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;

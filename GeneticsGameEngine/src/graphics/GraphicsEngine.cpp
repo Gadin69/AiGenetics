@@ -12,6 +12,42 @@
 #define D3DCOMPILE_STANDARD_FILE_INCLUDE nullptr
 #endif
 
+// Include handler for shader compilation
+class ShaderIncludeHandler : public ID3DInclude
+{
+public:
+    STDMETHOD(Open)(D3D_INCLUDE_TYPE IncludeType, LPCSTR pFileName, LPCVOID pParentData,
+                    LPCVOID* ppData, UINT* pBytes) override
+    {
+        // Read the included file
+        std::ifstream file(pFileName, std::ios::binary | std::ios::ate);
+        if (!file.is_open())
+        {
+            return E_FAIL;
+        }
+        
+        std::streamsize size = file.tellg();
+        file.seekg(0, std::ios::beg);
+        
+        char* buffer = new char[size];
+        if (!file.read(buffer, size))
+        {
+            delete[] buffer;
+            return E_FAIL;
+        }
+        
+        *ppData = buffer;
+        *pBytes = static_cast<UINT>(size);
+        return S_OK;
+    }
+    
+    STDMETHOD(Close)(LPCVOID pData) override
+    {
+        delete[] static_cast<const char*>(pData);
+        return S_OK;
+    }
+};
+
 // D3D12 Helper structures (minimal implementation of d3dx12.h)
 struct CD3DX12_HEAP_PROPERTIES : public D3D12_HEAP_PROPERTIES
 {
@@ -180,6 +216,13 @@ bool GraphicsEngine::Initialize(HWND hWnd)
             return false;
         }
         
+        // Step 10.5: Create wireframe pipeline state for basic rendering
+        if (!CreateWireframePipelineState())
+        {
+            std::cerr << "Failed to create wireframe pipeline state" << std::endl;
+            return false;
+        }
+        
         // Step 11: Create vertex buffer (test triangle)
         if (!CreateVertexBuffer())
         {
@@ -198,6 +241,13 @@ bool GraphicsEngine::Initialize(HWND hWnd)
         if (!CreateCameraConstantBuffer())
         {
             std::cerr << "Failed to create camera constant buffer" << std::endl;
+            return false;
+        }
+        
+        // Step 14: Initialize PBR system
+        if (!InitializePBRSystem())
+        {
+            std::cerr << "Failed to initialize PBR system" << std::endl;
             return false;
         }
         
@@ -238,24 +288,49 @@ void GraphicsEngine::Render()
 }
 
 // Complete render with genetics integration and camera
-void GraphicsEngine::Render(std::unique_ptr<GeneticsIntegration>& geneticsIntegration, 
+void GraphicsEngine::Render(std::unique_ptr<GeneticsIntegration>& geneticsIntegration,
                             Engine::Rendering::BaseCameraController* camera)
 {
     static int frameCount = 0;
     
+    // Debug: Print frame start when wireframe mode changes
+    if (m_wireframeMode && frameCount < 10) {
+        std::cout << "[RENDER] Starting frame " << frameCount << " with WIREFRAME MODE ON" << std::endl;
+        std::cout.flush();
+    }
+    
     try
     {
         // Wait for GPU to finish previous frame
+        if (m_wireframeMode && frameCount < 10) {
+            std::cout << "[RENDER] Waiting for previous frame..." << std::endl;
+            std::cout.flush();
+        }
         WaitForPreviousFrame();
         
-        // Populate command list
-        PopulateCommandList(camera);
+        // Get creature meshes
+        const auto& creatures = geneticsIntegration->GetCreatureMeshes();
+        
+        // Populate command list (including creature rendering)
+        if (m_wireframeMode && frameCount < 10) {
+            std::cout << "[RENDER] Populating command list..." << std::endl;
+            std::cout.flush();
+        }
+        PopulateCommandList(camera, creatures);
         
         // Execute command list
+        if (m_wireframeMode && frameCount < 10) {
+            std::cout << "[RENDER] Executing command list..." << std::endl;
+            std::cout.flush();
+        }
         ID3D12CommandList* ppCommandLists[] = { m_commandList.Get() };
         m_commandQueue->ExecuteCommandLists(1, ppCommandLists);
         
         // Present frame
+        if (m_wireframeMode && frameCount < 10) {
+            std::cout << "[RENDER] Presenting frame..." << std::endl;
+            std::cout.flush();
+        }
         HRESULT hr = m_swapChain->Present(0, 0);
         if (FAILED(hr))
         {
@@ -263,6 +338,10 @@ void GraphicsEngine::Render(std::unique_ptr<GeneticsIntegration>& geneticsIntegr
         }
         
         // Move to next frame
+        if (m_wireframeMode && frameCount < 10) {
+            std::cout << "[RENDER] Moving to next frame..." << std::endl;
+            std::cout.flush();
+        }
         MoveToNextFrame();
         
         if (frameCount < 5)
@@ -273,7 +352,13 @@ void GraphicsEngine::Render(std::unique_ptr<GeneticsIntegration>& geneticsIntegr
     }
     catch (const std::exception& e)
     {
-        std::cerr << "Exception in Render: " << e.what() << std::endl;
+        std::cerr << "[RENDER EXCEPTION] Standard exception in Render: " << e.what() << std::endl;
+        std::cerr.flush();
+    }
+    catch (...)
+    {
+        std::cerr << "[RENDER CRITICAL] Unknown exception in Render - D3D12 crash likely" << std::endl;
+        std::cerr.flush();
     }
 }
 
@@ -294,22 +379,22 @@ bool GraphicsEngine::InitializeDX12()
         std::cout << "  Debug Layer enabled" << std::endl;
     }
     
-    // Enable GPU-based validation
-    Microsoft::WRL::ComPtr<ID3D12Debug1> debugController1;
-    if (SUCCEEDED(debugController.As(&debugController1)))
-    {
-        debugController1->SetEnableGPUBasedValidation(TRUE);
-        std::cout << "  GPU-Based Validation enabled" << std::endl;
-    }
+    // DISABLED: GPU-based validation causes performance issues and unexpected termination
+    // Microsoft::WRL::ComPtr<ID3D12Debug1> debugController1;
+    // if (SUCCEEDED(debugController.As(&debugController1)))
+    // {
+    //     debugController1->SetEnableGPUBasedValidation(TRUE);
+    //     std::cout << "  GPU-Based Validation enabled" << std::endl;
+    // }
     
-    // Enable debug layer break on error
-    Microsoft::WRL::ComPtr<ID3D12Debug2> debugController2;
-    if (SUCCEEDED(debugController.As(&debugController2)))
-    {
-        debugController2->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, TRUE);
-        debugController2->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, TRUE);
-        std::cout << "  Debug break on error enabled" << std::endl;
-    }
+    // DISABLED: Break on error causes silent termination
+    // Microsoft::WRL::ComPtr<ID3D12Debug2> debugController2;
+    // if (SUCCEEDED(debugController.As(&debugController2)))
+    // {
+    //     debugController2->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, TRUE);
+    //     debugController2->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, TRUE);
+    //     std::cout << "  Debug break on error enabled" << std::endl;
+    // }
 #endif
     
     // Create DXGI factory
@@ -738,7 +823,9 @@ bool GraphicsEngine::CreatePipelineState()
     {
         { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, 
           D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-        { "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, 
+        { "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, 
+          D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        { "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 24, 
           D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
     };
     
@@ -755,16 +842,16 @@ bool GraphicsEngine::CreatePipelineState()
         m_pixelShaderBlob->GetBufferSize() 
     };
     
-    // Rasterizer state
+    // Rasterizer state - SOLID mode (default)
     psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
-    psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE; // Disabled for visibility
+    psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
     psoDesc.RasterizerState.FrontCounterClockwise = FALSE;
     psoDesc.RasterizerState.DepthClipEnable = TRUE;
     
-    // Depth/stencil state - ENABLED for 3D rendering
+    // Depth/stencil state - ENABLED for correct depth sorting
     psoDesc.DepthStencilState.DepthEnable = TRUE;
     psoDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
-    psoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+    psoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
     psoDesc.DepthStencilState.StencilEnable = FALSE;
     psoDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
     
@@ -796,6 +883,78 @@ bool GraphicsEngine::CreatePipelineState()
     );
     
     std::cout << "  Pipeline state object created successfully" << std::endl;
+    return true;
+}
+
+bool GraphicsEngine::CreateWireframePipelineState()
+{
+    std::cout << "  Creating wireframe pipeline state object..." << std::endl;
+    
+    // Define input layout (same as solid PSO)
+    D3D12_INPUT_ELEMENT_DESC inputLayout[] =
+    {
+        { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, 
+          D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        { "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, 
+          D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        { "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 24, 
+          D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+    };
+    
+    // Describe and create wireframe pipeline state object
+    D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
+    psoDesc.InputLayout = { inputLayout, _countof(inputLayout) };
+    psoDesc.pRootSignature = m_rootSignature.Get();
+    psoDesc.VS = { 
+        reinterpret_cast<UINT8*>(m_vertexShaderBlob->GetBufferPointer()), 
+        m_vertexShaderBlob->GetBufferSize() 
+    };
+    psoDesc.PS = { 
+        reinterpret_cast<UINT8*>(m_pixelShaderBlob->GetBufferPointer()), 
+        m_pixelShaderBlob->GetBufferSize() 
+    };
+    
+    // Rasterizer state - WIREFRAME mode
+    psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_WIREFRAME;
+    psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+    psoDesc.RasterizerState.FrontCounterClockwise = FALSE;
+    psoDesc.RasterizerState.DepthClipEnable = TRUE;
+    
+    // Depth/stencil state - ENABLED (same as solid PSO)
+    psoDesc.DepthStencilState.DepthEnable = TRUE;
+    psoDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
+    psoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
+    psoDesc.DepthStencilState.StencilEnable = FALSE;
+    psoDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
+    
+    // Blend state (same as solid PSO)
+    D3D12_RENDER_TARGET_BLEND_DESC rtBlendDesc = {};
+    rtBlendDesc.BlendEnable = FALSE;
+    rtBlendDesc.LogicOpEnable = FALSE;
+    rtBlendDesc.SrcBlend = D3D12_BLEND_ONE;
+    rtBlendDesc.DestBlend = D3D12_BLEND_ZERO;
+    rtBlendDesc.BlendOp = D3D12_BLEND_OP_ADD;
+    rtBlendDesc.SrcBlendAlpha = D3D12_BLEND_ONE;
+    rtBlendDesc.DestBlendAlpha = D3D12_BLEND_ZERO;
+    rtBlendDesc.BlendOpAlpha = D3D12_BLEND_OP_ADD;
+    rtBlendDesc.LogicOp = D3D12_LOGIC_OP_NOOP;
+    rtBlendDesc.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+    
+    psoDesc.BlendState.RenderTarget[0] = rtBlendDesc;
+    
+    // Other state
+    psoDesc.SampleMask = UINT_MAX;
+    psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+    psoDesc.NumRenderTargets = 1;
+    psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+    psoDesc.SampleDesc = { 1, 0 };
+    
+    ThrowIfFailed(
+        m_device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_wireframePipelineState)),
+        "Create Wireframe PipelineState failed"
+    );
+    
+    std::cout << "  Wireframe pipeline state created successfully" << std::endl;
     return true;
 }
 
@@ -1062,7 +1221,7 @@ void GraphicsEngine::UpdateCameraConstantBuffer(Engine::Rendering::BaseCameraCon
     memcpy(m_pCameraConstantData, &constants, sizeof(constants));
 }
 
-void GraphicsEngine::PopulateCommandList(Engine::Rendering::BaseCameraController* camera)
+void GraphicsEngine::PopulateCommandList(Engine::Rendering::BaseCameraController* camera, const std::vector<CreatureMeshData>& creatures)
 {
     // Reset command allocator and list
     HRESULT hr = m_commandAllocators[m_frameIndex]->Reset();
@@ -1116,7 +1275,13 @@ void GraphicsEngine::PopulateCommandList(Engine::Rendering::BaseCameraController
         m_rtvDescriptorSize
     );
     
-    const FLOAT clearColor[] = { 0.0f, 0.2f, 0.4f, 1.0f };
+    // Change background color based on wireframe mode for visual feedback
+    const FLOAT clearColor[] = { 
+        m_wireframeMode ? 0.2f : 0.0f,  // R: darker when wireframe
+        m_wireframeMode ? 0.1f : 0.2f,  // G: darker when wireframe
+        m_wireframeMode ? 0.3f : 0.4f,  // B: darker when wireframe
+        1.0f 
+    };
     m_commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
     
     // Clear depth buffer
@@ -1137,7 +1302,16 @@ void GraphicsEngine::PopulateCommandList(Engine::Rendering::BaseCameraController
     
     // Set pipeline state
     m_commandList->SetGraphicsRootSignature(m_rootSignature.Get());
-    m_commandList->SetPipelineState(m_pipelineState.Get());
+    
+    // Set pipeline state based on wireframe mode (for ALL objects)
+    if (m_wireframeMode && m_wireframePipelineState)
+    {
+        m_commandList->SetPipelineState(m_wireframePipelineState.Get());
+    }
+    else
+    {
+        m_commandList->SetPipelineState(m_pipelineState.Get());
+    }
     
     // Update and set camera constant buffer
     UpdateCameraConstantBuffer(camera);
@@ -1162,6 +1336,12 @@ void GraphicsEngine::PopulateCommandList(Engine::Rendering::BaseCameraController
     m_commandList->IASetIndexBuffer(&m_groundIndexBufferView);
     m_commandList->DrawIndexedInstanced(m_groundIndexCount, 1, 0, 0, 0);
     
+    // Render creature meshes
+    if (!creatures.empty())
+    {
+        RenderCreatures(creatures);
+    }
+    
     // Close command list
     HRESULT hrClose = m_commandList->Close();
     if (FAILED(hrClose))
@@ -1169,6 +1349,99 @@ void GraphicsEngine::PopulateCommandList(Engine::Rendering::BaseCameraController
         std::cerr << "Close command list failed (HRESULT: 0x" << std::hex << hrClose << std::dec << ")" << std::endl;
         return;
     }
+}
+
+void GraphicsEngine::RenderCreatures(const std::vector<CreatureMeshData>& creatures)
+{
+    if (!m_commandList)
+    {
+        std::cerr << "RenderCreatures: Invalid command list!" << std::endl;
+        return;
+    }
+    
+    static int frameCounter = 0;
+    if (frameCounter < 3) {
+        std::cout << "\n=== RenderCreatures Frame " << frameCounter << " ==="  << std::endl;
+        std::cout << "Rendering " << creatures.size() << " creatures" << std::endl;
+        std::cout << "[WIREFRAME MODE: " << (m_wireframeMode ? "ON" : "OFF") << "]" << std::endl;
+    }
+    
+    // Switch to PBR pipeline for creature rendering
+    if (m_pbrRootSignature && m_pbrPipelineState)
+    {
+        if (frameCounter < 5 && m_wireframeMode) {
+            std::cout << "  [DEBUG] Setting root signature..." << std::endl;
+        }
+        m_commandList->SetGraphicsRootSignature(m_pbrRootSignature.Get());
+        
+        // Choose pipeline state based on wireframe mode
+        if (m_wireframeMode && m_pbrWireframePipelineState)
+        {
+            if (frameCounter < 5) {
+                std::cout << "  [DEBUG] Setting WIREFRAME PSO..." << std::endl;
+            }
+            m_commandList->SetPipelineState(m_pbrWireframePipelineState.Get());
+            if (frameCounter < 5) {
+                std::cout << "  [DEBUG] Using WIREFRAME pipeline state" << std::endl;
+            }
+        }
+        else
+        {
+            m_commandList->SetPipelineState(m_pbrPipelineState.Get());
+            if (frameCounter < 5 && m_wireframeMode) {
+                std::cout << "  [WARNING] Wireframe mode ON but wireframe PSO is null!" << std::endl;
+            }
+        }
+        
+        if (frameCounter < 3) {
+            std::cout << "  Using PBR pipeline for creatures" << std::endl;
+            if (m_wireframeMode) {
+                std::cout << "  [WIREFRAME MODE]" << std::endl;
+            }
+        }
+    }
+    else
+    {
+        std::cerr << "  WARNING: PBR pipeline not available, using default" << std::endl;
+    }
+    
+    // Render each creature mesh
+    for (size_t i = 0; i < creatures.size(); ++i)
+    {
+        const auto& creature = creatures[i];
+        
+        if (!creature.meshRenderer)
+        {
+            std::cerr << "RenderCreatures: Creature " << i << " (" << creature.creatureID << ") has no mesh renderer!" << std::endl;
+            continue;
+        }
+        
+        UINT vertexCount = creature.meshRenderer->GetVertexCount();
+        if (frameCounter < 3) {
+            std::cout << "Rendering creature " << i << " (" << creature.creatureID << ") with " << vertexCount << " vertices at position (" 
+                      << creature.position.x << ", " << creature.position.y << ", " << creature.position.z << ")" << std::endl;
+            if (creature.materialID > 0) {
+                std::cout << "  Material ID: " << creature.materialID << std::endl;
+            }
+        }
+        
+        if (vertexCount == 0)
+        {
+            std::cerr << "RenderCreatures: Creature " << i << " has no vertices!" << std::endl;
+            continue;
+        }
+        
+        // Bind PBR material if available
+        if (m_materialSystem && creature.materialID > 0)
+        {
+            m_materialSystem->BindMaterial(m_commandList.Get(), creature.materialID);
+        }
+        
+        // Render the creature mesh
+        creature.meshRenderer->Render(m_commandList.Get());
+    }
+    
+    frameCounter++;
 }
 
 void GraphicsEngine::WaitForPreviousFrame()
@@ -1209,3 +1482,418 @@ void GraphicsEngine::MoveToNextFrame()
     // Update fence value for next time we use this frame
     m_fenceValues[m_frameIndex] = newFenceValue;
 }
+
+// ============================================================================
+// PBR System Implementation
+// ============================================================================
+
+bool GraphicsEngine::InitializePBRSystem()
+{
+    std::cout << "  Initializing PBR system..." << std::endl;
+    
+    // Step 1: Compile PBR shaders
+    if (!CompilePBRShaders())
+    {
+        std::cerr << "  Failed to compile PBR shaders" << std::endl;
+        return false;
+    }
+    
+    // Step 2: Create PBR root signature
+    if (!CreatePBRRootSignature())
+    {
+        std::cerr << "  Failed to create PBR root signature" << std::endl;
+        return false;
+    }
+    
+    // Step 3: Create PBR pipeline state
+    if (!CreatePBRPipelineState())
+    {
+        std::cerr << "  Failed to create PBR pipeline state" << std::endl;
+        return false;
+    }
+    
+    // Step 3.5: Create PBR wireframe pipeline state
+    if (!CreatePBRWireframePipelineState())
+    {
+        std::cerr << "  Failed to create PBR wireframe pipeline state" << std::endl;
+        return false;
+    }
+    
+    // Step 4: Initialize material system
+    m_materialSystem = std::make_unique<MaterialSystem>();
+    if (!m_materialSystem->Initialize(m_device.Get()))
+    {
+        std::cerr << "  Failed to initialize material system" << std::endl;
+        return false;
+    }
+    
+    // Step 5: Initialize HDR renderer
+    m_hdrRenderer = std::make_unique<HDRRenderer>();
+    if (!m_hdrRenderer->Initialize(m_device.Get(), m_width, m_height, 
+                                    m_commandQueue.Get(), m_factory.Get()))
+    {
+        std::cerr << "  Failed to initialize HDR renderer" << std::endl;
+        return false;
+    }
+    
+    std::cout << "  PBR system initialized successfully" << std::endl;
+    
+    // Step 6: Initialize UI button
+    InitializeUIButton();
+    
+    return true;
+}
+
+bool GraphicsEngine::CompilePBRShaders()
+{
+    std::cout << "  Compiling PBR shaders..." << std::endl;
+    
+    // Create include handler
+    ShaderIncludeHandler includeHandler;
+    
+    // Compile PBR vertex shader
+    Microsoft::WRL::ComPtr<ID3DBlob> vertexError;
+    UINT compileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
+    
+    HRESULT hr = D3DCompileFromFile(
+        L"PBRVertex.hlsl",
+        nullptr,
+        &includeHandler,
+        "main",
+        "vs_5_1",
+        compileFlags,
+        0,
+        &m_pbrVertexShaderBlob,
+        &vertexError
+    );
+    
+    if (FAILED(hr))
+    {
+        if (vertexError)
+        {
+            std::cerr << "PBR Vertex shader compilation error: " 
+                      << (char*)vertexError->GetBufferPointer() << std::endl;
+        }
+        return false;
+    }
+    
+    std::cout << "  PBR Vertex shader compiled successfully" << std::endl;
+    
+    // Compile PBR pixel shader
+    Microsoft::WRL::ComPtr<ID3DBlob> pixelError;
+    hr = D3DCompileFromFile(
+        L"PBRPixel.hlsl",
+        nullptr,
+        &includeHandler,
+        "main",
+        "ps_5_1",
+        compileFlags,
+        0,
+        &m_pbrPixelShaderBlob,
+        &pixelError
+    );
+    
+    if (FAILED(hr))
+    {
+        if (pixelError)
+        {
+            std::cerr << "PBR Pixel shader compilation error: " 
+                      << (char*)pixelError->GetBufferPointer() << std::endl;
+        }
+        return false;
+    }
+    
+    std::cout << "  PBR Pixel shader compiled successfully" << std::endl;
+    return true;
+}
+
+bool GraphicsEngine::CreatePBRRootSignature()
+{
+    std::cout << "  Creating PBR root signature..." << std::endl;
+    
+    // Create root signature with multiple CBVs for PBR:
+    // b0: View/Projection matrices (VS)
+    // b1: Material constants (PS)
+    // b2: Light constants (PS)
+    // b3: Camera position (PS)
+    
+    D3D12_ROOT_PARAMETER rootParams[4] = {};
+    
+    // b0: View/Projection (Vertex Shader)
+    rootParams[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+    rootParams[0].Descriptor.ShaderRegister = 0;
+    rootParams[0].Descriptor.RegisterSpace = 0;
+    rootParams[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+    
+    // b1: Material (Pixel Shader)
+    rootParams[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+    rootParams[1].Descriptor.ShaderRegister = 1;
+    rootParams[1].Descriptor.RegisterSpace = 0;
+    rootParams[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+    
+    // b2: Lights (Pixel Shader)
+    rootParams[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+    rootParams[2].Descriptor.ShaderRegister = 2;
+    rootParams[2].Descriptor.RegisterSpace = 0;
+    rootParams[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+    
+    // b3: Camera (Pixel Shader)
+    rootParams[3].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+    rootParams[3].Descriptor.ShaderRegister = 3;
+    rootParams[3].Descriptor.RegisterSpace = 0;
+    rootParams[3].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+    
+    D3D12_ROOT_SIGNATURE_DESC rootDesc = {};
+    rootDesc.NumParameters = 4;
+    rootDesc.pParameters = rootParams;
+    rootDesc.NumStaticSamplers = 0;
+    rootDesc.pStaticSamplers = nullptr;
+    rootDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+    
+    Microsoft::WRL::ComPtr<ID3DBlob> signature;
+    Microsoft::WRL::ComPtr<ID3DBlob> error;
+    
+    HRESULT hr = D3D12SerializeRootSignature(
+        &rootDesc,
+        D3D_ROOT_SIGNATURE_VERSION_1,
+        &signature,
+        &error
+    );
+    
+    if (FAILED(hr))
+    {
+        if (error)
+        {
+            std::cerr << "PBR Root signature serialization error: " 
+                      << (char*)error->GetBufferPointer() << std::endl;
+        }
+        return false;
+    }
+    
+    ThrowIfFailed(
+        m_device->CreateRootSignature(
+            0,
+            signature->GetBufferPointer(),
+            signature->GetBufferSize(),
+            IID_PPV_ARGS(&m_pbrRootSignature)
+        ),
+        "Create PBR RootSignature failed"
+    );
+    
+    std::cout << "  PBR Root signature created successfully" << std::endl;
+    return true;
+}
+
+bool GraphicsEngine::CreatePBRPipelineState()
+{
+    std::cout << "  Creating PBR pipeline state object..." << std::endl;
+    
+    // Define input layout for PBR (position, normal, texcoord)
+    D3D12_INPUT_ELEMENT_DESC inputLayout[] =
+    {
+        { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, 
+          D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        { "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, 
+          D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 24, 
+          D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+    };
+    
+    // Describe and create graphics pipeline state object (PSO)
+    D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
+    psoDesc.InputLayout = { inputLayout, _countof(inputLayout) };
+    psoDesc.pRootSignature = m_pbrRootSignature.Get();
+    psoDesc.VS = { 
+        reinterpret_cast<UINT8*>(m_pbrVertexShaderBlob->GetBufferPointer()), 
+        m_pbrVertexShaderBlob->GetBufferSize() 
+    };
+    psoDesc.PS = { 
+        reinterpret_cast<UINT8*>(m_pbrPixelShaderBlob->GetBufferPointer()), 
+        m_pbrPixelShaderBlob->GetBufferSize() 
+    };
+    
+    // Rasterizer state
+    psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
+    psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_BACK;
+    psoDesc.RasterizerState.FrontCounterClockwise = FALSE;
+    psoDesc.RasterizerState.DepthClipEnable = TRUE;
+    
+    // Depth/stencil state - ENABLED for proper 3D rendering
+    psoDesc.DepthStencilState.DepthEnable = TRUE;
+    psoDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
+    psoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
+    psoDesc.DepthStencilState.StencilEnable = FALSE;
+    psoDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
+    
+    // Blend state
+    D3D12_RENDER_TARGET_BLEND_DESC rtBlendDesc = {};
+    rtBlendDesc.BlendEnable = FALSE;
+    rtBlendDesc.LogicOpEnable = FALSE;
+    rtBlendDesc.SrcBlend = D3D12_BLEND_ONE;
+    rtBlendDesc.DestBlend = D3D12_BLEND_ZERO;
+    rtBlendDesc.BlendOp = D3D12_BLEND_OP_ADD;
+    rtBlendDesc.SrcBlendAlpha = D3D12_BLEND_ONE;
+    rtBlendDesc.DestBlendAlpha = D3D12_BLEND_ZERO;
+    rtBlendDesc.BlendOpAlpha = D3D12_BLEND_OP_ADD;
+    rtBlendDesc.LogicOp = D3D12_LOGIC_OP_NOOP;
+    rtBlendDesc.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+    
+    psoDesc.BlendState.RenderTarget[0] = rtBlendDesc;
+    
+    // Other state
+    psoDesc.SampleMask = UINT_MAX;
+    psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+    psoDesc.NumRenderTargets = 1;
+    psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+    psoDesc.SampleDesc = { 1, 0 };
+    
+    ThrowIfFailed(
+        m_device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_pbrPipelineState)),
+        "Create PBR PipelineState failed"
+    );
+    
+    std::cout << "  PBR Pipeline state created successfully" << std::endl;
+    return true;
+}
+
+bool GraphicsEngine::CreatePBRWireframePipelineState()
+{
+    std::cout << "  Creating PBR wireframe pipeline state object..." << std::endl;
+    
+    // Define input layout for PBR (position, normal, texcoord)
+    D3D12_INPUT_ELEMENT_DESC inputLayout[] =
+    {
+        { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, 
+          D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        { "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, 
+          D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 24, 
+          D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+    };
+    
+    // Describe and create graphics pipeline state object (PSO)
+    D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
+    psoDesc.InputLayout = { inputLayout, _countof(inputLayout) };
+    psoDesc.pRootSignature = m_pbrRootSignature.Get();
+    psoDesc.VS = { 
+        reinterpret_cast<UINT8*>(m_pbrVertexShaderBlob->GetBufferPointer()), 
+        m_pbrVertexShaderBlob->GetBufferSize() 
+    };
+    psoDesc.PS = { 
+        reinterpret_cast<UINT8*>(m_pbrPixelShaderBlob->GetBufferPointer()), 
+        m_pbrPixelShaderBlob->GetBufferSize() 
+    };
+    
+    // Rasterizer state - WIREFRAME MODE
+    psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_WIREFRAME;
+    psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_BACK;
+    psoDesc.RasterizerState.FrontCounterClockwise = FALSE;
+    psoDesc.RasterizerState.DepthClipEnable = TRUE;
+    
+    // Depth/stencil state - ENABLED for proper 3D rendering
+    psoDesc.DepthStencilState.DepthEnable = TRUE;
+    psoDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
+    psoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
+    psoDesc.DepthStencilState.StencilEnable = FALSE;
+    psoDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
+    
+    // Blend state
+    D3D12_RENDER_TARGET_BLEND_DESC rtBlendDesc = {};
+    rtBlendDesc.BlendEnable = FALSE;
+    rtBlendDesc.LogicOpEnable = FALSE;
+    rtBlendDesc.SrcBlend = D3D12_BLEND_ONE;
+    rtBlendDesc.DestBlend = D3D12_BLEND_ZERO;
+    rtBlendDesc.BlendOp = D3D12_BLEND_OP_ADD;
+    rtBlendDesc.SrcBlendAlpha = D3D12_BLEND_ONE;
+    rtBlendDesc.DestBlendAlpha = D3D12_BLEND_ZERO;
+    rtBlendDesc.BlendOpAlpha = D3D12_BLEND_OP_ADD;
+    rtBlendDesc.LogicOp = D3D12_LOGIC_OP_NOOP;
+    rtBlendDesc.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+    
+    psoDesc.BlendState.RenderTarget[0] = rtBlendDesc;
+    
+    // Other state
+    psoDesc.SampleMask = UINT_MAX;
+    psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+    psoDesc.NumRenderTargets = 1;
+    psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+    psoDesc.SampleDesc = { 1, 0 };
+    
+    ThrowIfFailed(
+        m_device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_pbrWireframePipelineState)),
+        "Create PBR Wireframe PipelineState failed"
+    );
+    
+    std::cout << "  PBR Wireframe Pipeline state created successfully" << std::endl;
+    return true;
+}
+
+// ============================================================================
+// UI Button Implementation
+// ============================================================================
+
+void GraphicsEngine::InitializeUIButton()
+{
+    // Position button in top-left corner
+    m_wireframeButton.x = 10.0f;
+    m_wireframeButton.y = 10.0f;
+    m_wireframeButton.width = 150.0f;
+    m_wireframeButton.height = 40.0f;
+    m_wireframeButton.text = L"Wireframe: OFF";
+    m_wireframeButton.hovered = false;
+    m_wireframeButton.pressed = false;
+    
+    std::cout << "  [UI] Wireframe button initialized at (" 
+              << m_wireframeButton.x << ", " << m_wireframeButton.y << ")" << std::endl;
+}
+
+void GraphicsEngine::CheckButtonHover()
+{
+    if (m_mouseInWindow)
+    {
+        m_wireframeButton.hovered = IsPointInButton(m_mouseX, m_mouseY);
+    }
+    else
+    {
+        m_wireframeButton.hovered = false;
+    }
+}
+
+bool GraphicsEngine::IsPointInButton(int x, int y) const
+{
+    return (x >= m_wireframeButton.x && 
+            x <= m_wireframeButton.x + m_wireframeButton.width &&
+            y >= m_wireframeButton.y && 
+            y <= m_wireframeButton.y + m_wireframeButton.height);
+}
+
+void GraphicsEngine::OnMouseMove(int x, int y)
+{
+    m_mouseInWindow = true;
+    m_mouseX = x;
+    m_mouseY = y;
+    CheckButtonHover();
+}
+
+void GraphicsEngine::OnMouseLeave()
+{
+    m_mouseInWindow = false;
+    m_wireframeButton.hovered = false;
+}
+
+void GraphicsEngine::OnMouseClick(int x, int y)
+{
+    if (IsPointInButton(x, y))
+    {
+        ToggleWireframe();
+        m_wireframeButton.pressed = true;
+        
+        // Update button text
+        m_wireframeButton.text = m_wireframeMode ? L"Wireframe: ON" : L"Wireframe: OFF";
+        
+        std::cout << "[Wireframe] Toggled to: " << (m_wireframeMode ? "ON" : "OFF") << std::endl;
+    }
+}
+
+
+

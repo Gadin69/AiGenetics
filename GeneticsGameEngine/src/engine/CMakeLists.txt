@@ -2,6 +2,10 @@
 
 # Add engine source files
 set(ENGINE_SOURCES
+    rendering/HDRRenderer.cpp
+    rendering/materials/pbr/PBRMaterial.cpp
+    rendering/materials/pbr/MaterialSystem.cpp
+    rendering/textures/ProceduralTextureGenerator.cpp
 )
 
 # Add engine headers
@@ -19,6 +23,10 @@ set(ENGINE_HEADERS
     rendering/lod/LODLevel.h
     rendering/projection/ProjectionMatrix.h
     rendering/projection/ProjectionModes.h
+    rendering/HDRRenderer.h
+    rendering/materials/pbr/PBRMaterial.h
+    rendering/materials/pbr/MaterialSystem.h
+    rendering/textures/ProceduralTextureGenerator.h
     genetics/genome/Chromosome.h
     genetics/genome/Gene.h
     genetics/genome/Genome.h
@@ -34,7 +42,7 @@ set(ENGINE_HEADERS
 )
 
 # Create engine library
-if(${ENGINE_SOURCES})
+if(ENGINE_SOURCES)
     add_library(Engine STATIC
         ${ENGINE_SOURCES}
         ${ENGINE_HEADERS}
@@ -68,3 +76,6 @@ set_target_properties(Engine PROPERTIES
 
 # Add procedural generation subdirectory
 add_subdirectory(procedural)
+
+# Add neural network subdirectory
+add_subdirectory(neural)

@@ -1,6 +1,7 @@
 #include "Window.h"
 #include "../engine/rendering/camera/CameraController.h"
 #include "../engine/rendering/camera/OrbitCameraController.h"
+#include "../graphics/GraphicsEngine.h"
 #include <string>
 #include <iostream>
 #include <algorithm>
@@ -99,6 +100,7 @@ LRESULT Window::HandleMessage(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPa
     switch (message)
     {
         case WM_DESTROY:
+            std::cout << "[Window] WM_DESTROY received - posting quit message" << std::endl;
             PostQuitMessage(0);
             return 0;
         
@@ -108,41 +110,90 @@ LRESULT Window::HandleMessage(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPa
             break;
         
         case WM_LBUTTONDOWN:
-            // Capture mouse when left button is clicked
-            if (!m_mouseCaptured && m_camera)
             {
+                int x = GET_X_LPARAM(lParam);
+                int y = GET_Y_LPARAM(lParam);
+                
+                // Forward to graphics engine for UI button click
+                if (m_graphicsEngine)
+                {
+                    m_graphicsEngine->OnMouseClick(x, y);
+                    
+                    // Don't capture mouse if clicking on UI button
+                    if (m_graphicsEngine->IsPointInButton(x, y))
+                    {
+                        break; // Skip camera rotation
+                    }
+                }
+                
+                // Start mouse capture for camera rotation
                 SetCapture(hWnd);
                 m_mouseCaptured = true;
-                m_lastMouseX = GET_X_LPARAM(lParam);
-                m_lastMouseY = GET_Y_LPARAM(lParam);
+                m_lastMouseX = x;
+                m_lastMouseY = y;
+                
+                // Hide cursor for FPS camera control
+                ShowCursor(FALSE);
+            }
+            break;
+        
+        case WM_MOUSELEAVE:
+            if (m_graphicsEngine)
+            {
+                m_graphicsEngine->OnMouseLeave();
             }
             break;
         
         case WM_LBUTTONUP:
-            // Release mouse capture
-            if (m_mouseCaptured)
             {
-                ReleaseCapture();
-                m_mouseCaptured = false;
+                int x = GET_X_LPARAM(lParam);
+                int y = GET_Y_LPARAM(lParam);
+                
+                // Forward to graphics engine for UI button release
+                if (m_graphicsEngine)
+                {
+                    // Check if releasing on button
+                }
+                
+                // Release mouse capture
+                if (m_mouseCaptured)
+                {
+                    ReleaseCapture();
+                    m_mouseCaptured = false;
+                    ShowCursor(TRUE);
+                }
             }
             break;
         
         case WM_MOUSEMOVE:
-            // Handle mouse movement for camera rotation
-            if (m_mouseCaptured && m_camera)
             {
-                int currentX = GET_X_LPARAM(lParam);
-                int currentY = GET_Y_LPARAM(lParam);
+                int x = GET_X_LPARAM(lParam);
+                int y = GET_Y_LPARAM(lParam);
                 
-                int deltaX = currentX - m_lastMouseX;
-                int deltaY = currentY - m_lastMouseY;
+                // Forward to graphics engine for UI button hover detection
+                if (m_graphicsEngine)
+                {
+                    m_graphicsEngine->OnMouseMove(x, y);
+                }
                 
-                // Rotate camera based on mouse movement
-                float sensitivity = 0.005f;
-                m_camera->Rotate(deltaX * sensitivity, deltaY * sensitivity);
-                
-                m_lastMouseX = currentX;
-                m_lastMouseY = currentY;
+                // Handle mouse movement for camera rotation
+                if (m_mouseCaptured && m_camera)
+                {
+                    int deltaX = x - m_lastMouseX;
+                    int deltaY = y - m_lastMouseY;
+                    
+                    // Rotate camera based on mouse movement
+                    float sensitivity = 0.005f;
+                    m_camera->Rotate(deltaX * sensitivity, deltaY * sensitivity);
+                    
+                    m_lastMouseX = x;
+                    m_lastMouseY = y;
+                }
+                else
+                {
+                    m_lastMouseX = x;
+                    m_lastMouseY = y;
+                }
             }
             break;
         
@@ -173,6 +224,19 @@ LRESULT Window::HandleMessage(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPa
                 case 'S': m_keyS = true; break;
                 case 'A': m_keyA = true; break;
                 case 'D': m_keyD = true; break;
+                case '1': // Toggle wireframe mode
+                    std::cout << "[DEBUG] '1' key pressed!" << std::endl;
+                    if (m_graphicsEngine)
+                    {
+                        m_graphicsEngine->ToggleWireframe();
+                        std::cout << "[DEBUG] Wireframe toggled to: " 
+                                  << (m_graphicsEngine->IsWireframeMode() ? "ON" : "OFF") << std::endl;
+                    }
+                    else
+                    {
+                        std::cout << "[ERROR] GraphicsEngine pointer is null!" << std::endl;
+                    }
+                    break;
             }
             break;
         

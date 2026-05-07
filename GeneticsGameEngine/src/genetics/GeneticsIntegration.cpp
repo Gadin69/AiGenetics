@@ -1,8 +1,12 @@
 #include "GeneticsIntegration.h"
 #include "../graphics/GraphicsEngine.h"
 #include <iostream>
+#include <algorithm>
 #include <DirectXMath.h>
 #include <chrono>
+
+// Phase 4: Neural system namespace
+namespace Neural = Engine::Neural;
 
 namespace Genetics = Engine::Genetics;
 namespace Taxonomy = Engine::Genetics::Taxonomy;
@@ -41,6 +45,9 @@ bool GeneticsIntegration::Initialize()
     std::cout << "Total organisms: " << m_organisms.size() << std::endl;
     std::cout.flush();
     
+    // Phase 4: Initialize neural systems for all organisms
+    InitializeNeuralSystems();
+    
     return true;
 }
 
@@ -48,18 +55,29 @@ bool GeneticsIntegration::Initialize()
 void GeneticsIntegration::GenerateCreatureMeshes(ID3D12Device* device, ID3D12GraphicsCommandList* commandList) {
     std::cout << "\n=== Phase 3: Generating Creature Meshes ==="  << std::endl;
     
-    // Initialize mesh renderer if not already done
-    if (!m_meshRenderer) {
-        m_meshRenderer = std::make_unique<Engine::Procedural::Mesh::ProceduralMeshRenderer>();
-        if (!m_meshRenderer->Initialize(device)) {
-            std::cerr << "Failed to initialize procedural mesh renderer!" << std::endl;
-            return;
-        }
-        std::cout << "Procedural mesh renderer initialized." << std::endl;
+    if (!device || !commandList) {
+        std::cerr << "Invalid device or command list!" << std::endl;
+        return;
     }
     
     // Clear existing meshes
     m_creatureMeshes.clear();
+    
+    // Create a temporary command allocator and list for uploading mesh data
+    Microsoft::WRL::ComPtr<ID3D12CommandAllocator> uploadAllocator;
+    Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> uploadCommandList;
+    
+    HRESULT hr = device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&uploadAllocator));
+    if (FAILED(hr)) {
+        std::cerr << "Failed to create upload command allocator!" << std::endl;
+        return;
+    }
+    
+    hr = device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, uploadAllocator.Get(), nullptr, IID_PPV_ARGS(&uploadCommandList));
+    if (FAILED(hr)) {
+        std::cerr << "Failed to create upload command list!" << std::endl;
+        return;
+    }
     
     // Generate mesh for each organism
     float xPos = -3.0f;
@@ -67,8 +85,55 @@ void GeneticsIntegration::GenerateCreatureMeshes(ID3D12Device* device, ID3D12Gra
         try {
             std::cout << "  Generating mesh for organism " << i << "/" << m_organisms.size() << "..." << std::endl;
             CreatureMeshData meshData = GenerateMeshForOrganism(m_organisms[i].get(), static_cast<int>(i));
-            meshData.position = DirectX::XMFLOAT3(xPos, 0.0f, 0.0f);
-            m_creatureMeshes.push_back(meshData);
+            meshData.position = DirectX::XMFLOAT3(xPos, 2.0f, 0.0f); // Elevated to be visible above ground
+            
+            // Apply position transformation to vertices BEFORE uploading to GPU
+            std::cout << "    Applying position offset (" << meshData.position.x << ", " 
+                      << meshData.position.y << ", " << meshData.position.z << ") to vertices..." << std::endl;
+            for (auto& vertex : meshData.mesh.vertices) {
+                vertex.x += meshData.position.x;
+                vertex.y += meshData.position.y;
+                vertex.z += meshData.position.z;
+            }
+            
+            // Initialize mesh renderer and upload to GPU
+            meshData.meshRenderer = std::make_unique<Engine::Procedural::Mesh::ProceduralMeshRenderer>();
+            if (!meshData.meshRenderer->Initialize(device)) {
+                std::cerr << "  Failed to initialize mesh renderer for creature " << i << std::endl;
+                continue;
+            }
+            
+            // Create a transformed copy of the mesh with position offset
+            Engine::Procedural::Mesh::MeshData transformedMesh = meshData.mesh;
+            DirectX::XMVECTOR translation = DirectX::XMLoadFloat3(&meshData.position);
+            
+            for (auto& vertex : transformedMesh.vertices) {
+                DirectX::XMVECTOR pos = DirectX::XMLoadFloat3(&vertex);
+                pos = DirectX::XMVectorAdd(pos, translation);
+                DirectX::XMStoreFloat3(&vertex, pos);
+            }
+            
+            // Upload mesh data using the temporary command list
+            if (!meshData.meshRenderer->UpdateMesh(transformedMesh, uploadCommandList.Get())) {
+                std::cerr << "  Failed to upload mesh for creature " << i << std::endl;
+                continue;
+            }
+            
+            std::cout << "  Mesh " << i << " upload commands recorded" << std::endl;
+            
+            // Phase 5: Assign PBR material based on genetics
+            if (m_materialSystem)
+            {
+                meshData.materialID = AssignMaterialFromGenetics(m_organisms[i].get());
+                std::cout << "  Assigned material ID " << meshData.materialID << " to creature " << i << std::endl;
+            }
+            else
+            {
+                meshData.materialID = 0; // No material assigned
+                std::cout << "  WARNING: Material system not initialized, no material assigned" << std::endl;
+            }
+            
+            m_creatureMeshes.push_back(std::move(meshData));
             std::cout << "  Mesh " << i << " generated successfully." << std::endl;
             xPos += 4.0f; // Space creatures apart
         } catch (const std::exception& e) {
@@ -79,6 +144,48 @@ void GeneticsIntegration::GenerateCreatureMeshes(ID3D12Device* device, ID3D12Gra
         }
     }
     
+    // Close and execute the upload command list
+    hr = uploadCommandList->Close();
+    if (FAILED(hr)) {
+        std::cerr << "Failed to close upload command list!" << std::endl;
+        return;
+    }
+    
+    // Create a temporary command queue for upload
+    Microsoft::WRL::ComPtr<ID3D12CommandQueue> uploadQueue;
+    D3D12_COMMAND_QUEUE_DESC queueDesc = {};
+    queueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
+    queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
+    hr = device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&uploadQueue));
+    if (FAILED(hr)) {
+        std::cerr << "Failed to create upload command queue!" << std::endl;
+        return;
+    }
+    
+    // Execute the upload command list
+    ID3D12CommandList* ppCommandLists[] = { uploadCommandList.Get() };
+    uploadQueue->ExecuteCommandLists(1, ppCommandLists);
+    
+    // Wait for GPU to complete the uploads
+    Microsoft::WRL::ComPtr<ID3D12Fence> fence;
+    hr = device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence));
+    if (FAILED(hr)) {
+        std::cerr << "Failed to create fence!" << std::endl;
+        return;
+    }
+    
+    HANDLE fenceEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);
+    const UINT64 fenceValue = 1;
+    uploadQueue->Signal(fence.Get(), fenceValue);
+    
+    if (fence->GetCompletedValue() < fenceValue) {
+        fence->SetEventOnCompletion(fenceValue, fenceEvent);
+        WaitForSingleObject(fenceEvent, INFINITE);
+    }
+    
+    CloseHandle(fenceEvent);
+    
+    std::cout << "Mesh uploads completed and executed on GPU." << std::endl;
     std::cout << "Generated " << m_creatureMeshes.size() << " creature meshes." << std::endl;
 }
 
@@ -164,6 +271,9 @@ void GeneticsIntegration::Update(float deltaTime)
         // Could apply mutations over time
         // organism->ApplyMutation(0.001f); // Very slow mutation rate
     }
+    
+    // Phase 4: Update neural systems
+    UpdateNeuralSystems(deltaTime);
 }
 
 // Phase 3: Generate mesh for a single organism
@@ -238,6 +348,34 @@ CreatureMeshData GeneticsIntegration::GenerateMeshForOrganism(
     
     std::cout << "    Mesh extracted: " << result.mesh.vertices.size() << " vertices, " << result.mesh.indices.size() / 3 << " triangles" << std::endl;
     
+    // DEBUG: Print first 5 vertices to check if they're spread out or collapsed
+    if (result.mesh.vertices.size() > 0) {
+        std::cout << "    DEBUG - First 5 vertices:" << std::endl;
+        size_t count = result.mesh.vertices.size() < 5 ? result.mesh.vertices.size() : 5;
+        for (size_t i = 0; i < count; ++i) {
+            const auto& v = result.mesh.vertices[i];
+            std::cout << "      Vertex " << i << ": (" << v.x << ", " << v.y << ", " << v.z << ")" << std::endl;
+        }
+        
+        // Calculate bounding box
+        float minX = result.mesh.vertices[0].x, maxX = result.mesh.vertices[0].x;
+        float minY = result.mesh.vertices[0].y, maxY = result.mesh.vertices[0].y;
+        float minZ = result.mesh.vertices[0].z, maxZ = result.mesh.vertices[0].z;
+        
+        for (const auto& v : result.mesh.vertices) {
+            if (v.x < minX) minX = v.x;
+            if (v.x > maxX) maxX = v.x;
+            if (v.y < minY) minY = v.y;
+            if (v.y > maxY) maxY = v.y;
+            if (v.z < minZ) minZ = v.z;
+            if (v.z > maxZ) maxZ = v.z;
+        }
+        
+        std::cout << "    DEBUG - Bounding box: (" << minX << "," << minY << "," << minZ << ") to (" 
+                  << maxX << "," << maxY << "," << maxZ << ")" << std::endl;
+        std::cout << "    DEBUG - Size: " << (maxX-minX) << " x " << (maxY-minY) << " x " << (maxZ-minZ) << std::endl;
+    }
+    
     // Step 4: Optimize mesh if needed
     uint32_t targetTriangles = 10000;
     if (result.mesh.indices.size() / 3 > targetTriangles) {
@@ -249,6 +387,9 @@ CreatureMeshData GeneticsIntegration::GenerateMeshForOrganism(
     std::cout << "  " << result.creatureID << ": " 
               << result.mesh.vertices.size() << " vertices, "
               << result.mesh.indices.size() / 3 << " triangles" << std::endl;
+    
+    // Create mesh renderer and upload to GPU
+    result.meshRenderer = std::make_unique<Engine::Procedural::Mesh::ProceduralMeshRenderer>();
     
     return result;
 }
@@ -297,4 +438,206 @@ DirectX::XMFLOAT4 GeneticsIntegration::GetColorFromIndex(int index)
         return colorPalette[index];
     }
     return DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f); // Default white
+}
+
+// Phase 4: Neural system integration methods
+void GeneticsIntegration::InitializeNeuralSystems()
+{
+    std::cout << "\n=== Phase 4: Initializing Neural Systems ===" << std::endl;
+    
+    // Get neural system manager instance
+    auto& neuralManager = Neural::NeuralSystemManager::GetInstance();
+    neuralManager.Initialize();
+    
+    // Create neural network for each organism
+    m_neuralNetworkIndices.clear();
+    m_neuralNetworkIndices.reserve(m_organisms.size());
+    
+    for (size_t i = 0; i < m_organisms.size(); ++i) {
+        // We need to access the genome - for now, we'll create a simplified initialization
+        // In a full implementation, you'd store the genome with each organism
+        std::cout << "  Creating neural network for organism " << i << "..." << std::endl;
+        
+        // Create a placeholder genome (this should come from the organism)
+        // For demonstration, we'll create an empty genome
+        Engine::Genetics::Genome placeholderGenome("Organism_" + std::to_string(i) + "_Genome");
+        
+        size_t networkIndex = neuralManager.CreateNetworkForOrganism(placeholderGenome);
+        m_neuralNetworkIndices.push_back(networkIndex);
+        
+        std::cout << "  Neural network " << networkIndex << " created for organism " << i << std::endl;
+    }
+    
+    std::cout << "Neural systems initialized for " << m_neuralNetworkIndices.size() << " organisms." << std::endl;
+}
+
+void GeneticsIntegration::UpdateNeuralSystems(float deltaTime)
+{
+    auto& neuralManager = Neural::NeuralSystemManager::GetInstance();
+    
+    // Update all neural networks
+    neuralManager.UpdateAllNetworks(deltaTime);
+    
+    // Trigger growth periodically (every 10 seconds)
+    // DISABLED: TriggerGrowth has a bug causing access violation - needs debugging
+    /*
+    static float growthTimer = 0.0f;
+    growthTimer += deltaTime;
+    
+    if (growthTimer >= 10.0f) {
+        growthTimer = 0.0f;
+        
+        std::cout << "[NEURAL] Triggering growth for " << m_neuralNetworkIndices.size() << " networks" << std::endl;
+        
+        for (size_t networkIndex : m_neuralNetworkIndices) {
+            // Validate network index before triggering growth
+            if (networkIndex < 1000) { // Sanity check - index should be reasonable
+                std::cout << "[NEURAL] Triggering growth for network " << networkIndex << std::endl;
+                int neuronsAdded = neuralManager.TriggerGrowth(networkIndex);
+                if (neuronsAdded > 0) {
+                    std::cout << "  Neural network " << networkIndex << " grew " << neuronsAdded << " neurons" << std::endl;
+                }
+            } else {
+                std::cerr << "[ERROR] Invalid network index: " << networkIndex << std::endl;
+            }
+        }
+    }
+    */
+}
+
+void GeneticsIntegration::ApplyNeuralBehavioralOutputs()
+{
+    auto& neuralManager = Neural::NeuralSystemManager::GetInstance();
+    
+    // Apply neural outputs to creature behavior
+    // This is a simplified example - in a full implementation, you'd use the outputs
+    // to control movement, actions, etc.
+    
+    for (size_t i = 0; i < m_neuralNetworkIndices.size() && i < m_organisms.size(); ++i) {
+        size_t networkIndex = m_neuralNetworkIndices[i];
+        
+        // Get neural outputs
+        std::vector<float> outputs = neuralManager.GetNetworkOutputs(networkIndex);
+        
+        if (!outputs.empty()) {
+            // Example: Use first output to influence movement speed
+            // In a full system, you'd have a behavior controller that interprets these outputs
+            float movementSpeed = outputs[0];  // 0-1 range
+            
+            // Apply to creature (placeholder - actual implementation would depend on your behavior system)
+            // m_organisms[i]->SetMovementSpeed(movementSpeed);
+        }
+    }
+}
+
+// ============================================================================
+// Phase 5: PBR Material System Implementation
+// ============================================================================
+
+void GeneticsIntegration::InitializeMaterialSystem(ID3D12Device* device)
+{
+    std::cout << "  [Phase 5] Initializing PBR material system..." << std::endl;
+    
+    m_materialSystem = std::make_unique<GeneticsGameEngine::Rendering::MaterialSystem>();
+    
+    if (!m_materialSystem->Initialize(device))
+    {
+        std::cerr << "  [Phase 5] Failed to initialize material system" << std::endl;
+        return;
+    }
+    
+    std::cout << "  [Phase 5] Material system initialized with " 
+              << m_materialSystem->GetMaterialCount() << " default materials" << std::endl;
+}
+
+GeneticsGameEngine::Rendering::MaterialID GeneticsIntegration::AssignMaterialFromGenetics(
+    const Engine::Genetics::Taxonomy::Organism* organism)
+{
+    if (!m_materialSystem)
+    {
+        std::cerr << "  [Phase 5] Material system not initialized!" << std::endl;
+        return 0;
+    }
+    
+    // Determine taxonomy type
+    auto chordata = dynamic_cast<const Engine::Genetics::Taxonomy::Chordata*>(organism);
+    auto arthropoda = dynamic_cast<const Engine::Genetics::Taxonomy::Arthropoda*>(organism);
+    auto mollusca = dynamic_cast<const Engine::Genetics::Taxonomy::Mollusca*>(organism);
+    
+    GeneticsGameEngine::Rendering::PBRMaterial material;
+    
+    // Extract genetic properties to influence material parameters
+    float scale = organism->GetScale();
+    int colorIndex = organism->GetColorIndex();
+    
+    // Use genome to influence material (simplified - would use specific gene loci in full implementation)
+    // Map color index to base albedo variation
+    float colorVariation = (colorIndex % 10) / 10.0f;
+    
+    if (chordata)
+    {
+        // Chordata: Skin material
+        material.materialID = "Skin_" + organism->GetID();
+        
+        // Skin properties from genetics
+        material.albedo = DirectX::XMFLOAT3(
+            0.95f - colorVariation * 0.1f,
+            0.75f + colorVariation * 0.05f,
+            0.70f + colorVariation * 0.05f
+        );
+        material.roughness = 0.6f + colorVariation * 0.2f;  // Genetic influence on skin texture
+        material.metallic = 0.0f;  // Skin is non-metallic
+        material.ambientOcclusion = 0.8f;
+        
+        std::cout << "    [PBR] Assigned Skin material to " << organism->GetID() << std::endl;
+        return m_materialSystem->CreateMaterial(material, material.materialID);
+    }
+    else if (arthropoda)
+    {
+        // Arthropoda: Exoskeleton material
+        material.materialID = "Exoskeleton_" + organism->GetID();
+        
+        // Exoskeleton properties from genetics
+        material.albedo = DirectX::XMFLOAT3(
+            0.3f + colorVariation * 0.2f,
+            0.2f + colorVariation * 0.15f,
+            0.15f + colorVariation * 0.1f
+        );
+        material.roughness = 0.5f + colorVariation * 0.3f;  // Genetic influence on exoskeleton roughness
+        material.metallic = 0.1f + colorVariation * 0.05f;  // Slight metallic sheen
+        material.ambientOcclusion = 0.9f;
+        
+        std::cout << "    [PBR] Assigned Exoskeleton material to " << organism->GetID() << std::endl;
+        return m_materialSystem->CreateMaterial(material, material.materialID);
+    }
+    else if (mollusca)
+    {
+        // Mollusca: Shell material
+        material.materialID = "Shell_" + organism->GetID();
+        
+        // Shell properties from genetics
+        material.albedo = DirectX::XMFLOAT3(
+            0.85f - colorVariation * 0.1f,
+            0.80f - colorVariation * 0.05f,
+            0.70f + colorVariation * 0.1f
+        );
+        material.roughness = 0.3f + colorVariation * 0.2f;  // Shells are generally smooth
+        material.metallic = 0.05f;  // Very slight metallic luster
+        material.ambientOcclusion = 0.85f;
+        
+        std::cout << "    [PBR] Assigned Shell material to " << organism->GetID() << std::endl;
+        return m_materialSystem->CreateMaterial(material, material.materialID);
+    }
+    else
+    {
+        // Default material
+        material.materialID = "Default_" + organism->GetID();
+        material.albedo = DirectX::XMFLOAT3(0.8f, 0.8f, 0.8f);
+        material.roughness = 0.5f;
+        material.metallic = 0.0f;
+        material.ambientOcclusion = 1.0f;
+        
+        std::cout << "    [PBR] Assigned Default material to " << organism->GetID() << std::endl;
+        return m_materialSystem->CreateMaterial(material, material.materialID);
+    }
 }

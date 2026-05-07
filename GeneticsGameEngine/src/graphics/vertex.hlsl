@@ -8,12 +8,14 @@ cbuffer CameraConstants : register(b0)
 struct VS_INPUT
 {
     float3 position : POSITION;
+    float3 normal : NORMAL;
     float4 color : COLOR;
 };
 
 struct VS_OUTPUT
 {
     float4 position : SV_POSITION;
+    float3 normal : NORMAL;
     float4 color : COLOR;
 };
 
@@ -27,7 +29,8 @@ VS_OUTPUT main(VS_INPUT input)
     float4 viewPos = mul(viewMatrix, worldPos);
     output.position = mul(projectionMatrix, viewPos);
     
-    // Pass through color
+    // Pass through normal and color
+    output.normal = input.normal;
     output.color = input.color;
     
     return output;

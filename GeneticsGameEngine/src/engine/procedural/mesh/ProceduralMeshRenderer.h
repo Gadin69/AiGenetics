@@ -20,6 +20,7 @@ private:
     Microsoft::WRL::ComPtr<ID3D12Resource> m_indexBuffer;
     D3D12_VERTEX_BUFFER_VIEW m_vertexBufferView = {};
     D3D12_INDEX_BUFFER_VIEW m_indexBufferView = {};
+    UINT m_vertexCount = 0;
     UINT m_indexCount = 0;
     
     // Upload buffers
@@ -39,8 +40,8 @@ public:
     // Render the mesh
     void Render(ID3D12GraphicsCommandList* commandList) const;
     
-    // Get index count
-    UINT GetIndexCount() const { return m_indexCount; }
+    // Get vertex count
+    UINT GetVertexCount() const { return m_vertexCount; }
     
 private:
     bool CreateGPUResources(const MeshData& mesh);

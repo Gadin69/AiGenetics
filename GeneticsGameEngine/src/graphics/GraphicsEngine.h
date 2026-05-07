@@ -11,12 +11,19 @@
 
 // Forward declarations
 class GeneticsIntegration;
+struct CreatureMeshData;
 
 namespace Engine {
     namespace Rendering {
         class BaseCameraController;
     }
 }
+
+// PBR System includes
+#include "../engine/rendering/materials/pbr/MaterialSystem.h"
+#include "../engine/rendering/HDRRenderer.h"
+
+using namespace GeneticsGameEngine::Rendering;
 
 // Vertex structure for rendering
 struct Vertex {
@@ -55,6 +62,16 @@ public:
     // Getters for Phase 3 integration
     ID3D12Device* GetDevice() const { return m_device.Get(); }
     ID3D12GraphicsCommandList* GetCommandList() const { return m_commandList.Get(); }
+    
+    // Wireframe toggle
+    void ToggleWireframe() { m_wireframeMode = !m_wireframeMode; }
+    bool IsWireframeMode() const { return m_wireframeMode; }
+    
+    // Mouse input handling for UI
+    void OnMouseMove(int x, int y);
+    void OnMouseLeave();
+    void OnMouseClick(int x, int y);
+    bool IsPointInButton(int x, int y) const;
 
 private:
     // Core DX12 objects (using ComPtr for automatic reference counting)
@@ -102,13 +119,44 @@ private:
     Microsoft::WRL::ComPtr<ID3D12Resource> m_cameraConstantBuffer;
     UINT8* m_pCameraConstantData = nullptr;
     
+    // Wireframe rendering state
+    bool m_wireframeMode = false;
+    
+    // UI button state (for clickable wireframe toggle)
+    struct UIButton {
+        float x, y, width, height;
+        std::wstring text;
+        bool hovered;
+        bool pressed;
+    };
+    UIButton m_wireframeButton;
+    bool m_mouseInWindow = false;
+    int m_mouseX = 0;
+    int m_mouseY = 0;
+    
     // Pipeline state
     Microsoft::WRL::ComPtr<ID3D12PipelineState> m_pipelineState;
+    Microsoft::WRL::ComPtr<ID3D12PipelineState> m_wireframePipelineState;  // Wireframe for basic rendering
     Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature;
     
     // Shader blobs
     Microsoft::WRL::ComPtr<ID3DBlob> m_vertexShaderBlob;
     Microsoft::WRL::ComPtr<ID3DBlob> m_pixelShaderBlob;
+    
+    // PBR Shader blobs
+    Microsoft::WRL::ComPtr<ID3DBlob> m_pbrVertexShaderBlob;
+    Microsoft::WRL::ComPtr<ID3DBlob> m_pbrPixelShaderBlob;
+    
+    // PBR pipeline state
+    Microsoft::WRL::ComPtr<ID3D12PipelineState> m_pbrPipelineState;
+    Microsoft::WRL::ComPtr<ID3D12PipelineState> m_pbrWireframePipelineState;
+    Microsoft::WRL::ComPtr<ID3D12RootSignature> m_pbrRootSignature;
+    
+    // PBR Material System
+    std::unique_ptr<MaterialSystem> m_materialSystem;
+    
+    // HDR Renderer
+    std::unique_ptr<HDRRenderer> m_hdrRenderer;
     
     // Synchronization
     Microsoft::WRL::ComPtr<ID3D12Fence> m_fence;
@@ -131,13 +179,26 @@ private:
     bool CompileShaders();
     bool CreateRootSignature();
     bool CreatePipelineState();
+    bool CreateWireframePipelineState();  // Wireframe PSO for basic rendering
     bool CreateVertexBuffer();
     bool CreateGroundPlane();
     bool CreateCameraConstantBuffer();
     
+    // PBR initialization methods
+    bool CompilePBRShaders();
+    bool CreatePBRRootSignature();
+    bool CreatePBRPipelineState();
+    bool CreatePBRWireframePipelineState();
+    bool InitializePBRSystem();
+    
+    // UI rendering
+    void InitializeUIButton();
+    void CheckButtonHover();
+    
     // Render loop helpers
     void UpdateCameraConstantBuffer(Engine::Rendering::BaseCameraController* camera);
-    void PopulateCommandList(Engine::Rendering::BaseCameraController* camera);
+    void PopulateCommandList(Engine::Rendering::BaseCameraController* camera, const std::vector<CreatureMeshData>& creatures);
+    void RenderCreatures(const std::vector<CreatureMeshData>& creatures);
     void WaitForPreviousFrame();
     void MoveToNextFrame();
     

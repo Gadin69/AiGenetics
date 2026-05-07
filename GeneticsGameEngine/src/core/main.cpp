@@ -11,6 +11,25 @@
 #include <thread>
 #include "dx12_test.h"
 
+// Global crash handler to catch access violations
+LONG WINAPI CrashHandler(EXCEPTION_POINTERS* ExceptionInfo)
+{
+    std::cerr << "\n=== CRASH DETECTED ==="  << std::endl;
+    std::cerr << "Exception code: 0x" << std::hex << ExceptionInfo->ExceptionRecord->ExceptionCode << std::dec << std::endl;
+    std::cerr << "Exception address: 0x" << std::hex << ExceptionInfo->ExceptionRecord->ExceptionAddress << std::dec << std::endl;
+    std::cerr.flush();
+    
+    return EXCEPTION_EXECUTE_HANDLER;
+}
+
+// Console control handler to catch termination signals
+BOOL WINAPI ConsoleCtrlHandler(DWORD fdwCtrlType)
+{
+    std::cout << "[MAIN] Console control signal received: " << fdwCtrlType << std::endl;
+    std::cout.flush();
+    return FALSE; // Let system handle it
+}
+
 // Include actual header files (not just forward declarations)
 #include "../graphics/GraphicsEngine.h"
 #include "../core/Window.h"
@@ -45,6 +64,7 @@ private:
     
     // FPS counter
     std::chrono::steady_clock::time_point m_lastFrameTime;
+    std::chrono::steady_clock::time_point m_startTime;
     int m_frameCount;
     float m_fps;
 
@@ -62,6 +82,12 @@ private:
 // Main entry point
 int main()
 {
+    // Register crash handler FIRST
+    SetUnhandledExceptionFilter(CrashHandler);
+    
+    // Register console control handler
+    SetConsoleCtrlHandler(ConsoleCtrlHandler, TRUE);
+    
     // No need for AllocConsole when using /SUBSYSTEM:CONSOLE
     
     try
@@ -73,11 +99,17 @@ int main()
         {
             std::cerr << "Failed to initialize application!" << std::endl;
             std::cerr.flush();
+            std::cout << "\nPress any key to exit..." << std::endl;
+            std::cin.get();
             return -1;
         }
         
         app.Run();
         app.Cleanup();
+        
+        std::cout << "\n=== Application Closed ==="  << std::endl;
+        std::cout << "Press any key to exit..." << std::endl;
+        std::cin.get();
         
         std::cout << "Application exited successfully." << std::endl;
         std::cout.flush();
@@ -87,6 +119,8 @@ int main()
     {
         std::cerr << "Exception: " << e.what() << std::endl;
         std::cerr.flush();
+        std::cout << "\nPress any key to exit..." << std::endl;
+        std::cin.get();
         return -1;
     }
 }
@@ -120,6 +154,9 @@ bool Application::Initialize()
     }
     std::cout << "Graphics engine initialized successfully." << std::endl;
     std::cout.flush();
+    
+    // Set graphics engine pointer in window for input handling
+    m_window->SetGraphicsEngine(m_graphicsEngine.get());
     
     // Initialize genetics integration
     m_geneticsIntegration = std::make_unique<GeneticsIntegration>();
@@ -160,10 +197,15 @@ bool Application::Initialize()
     
     // Initialize FPS counter
     m_lastFrameTime = std::chrono::steady_clock::now();
+    m_startTime = m_lastFrameTime;
     
     // Phase 3: Generate creature meshes from genetics
     std::cout << "\n=== Phase 3: Procedural Mesh Generation ===" << std::endl;
     try {
+        // Phase 5: Initialize PBR material system
+        std::cout << "\n=== Phase 5: PBR Material System ===" << std::endl;
+        m_geneticsIntegration->InitializeMaterialSystem(m_graphicsEngine->GetDevice());
+        
         m_geneticsIntegration->GenerateCreatureMeshes(
             m_graphicsEngine->GetDevice(),
             m_graphicsEngine->GetCommandList()
@@ -182,11 +224,12 @@ bool Application::Initialize()
 
 void Application::Run()
 {
-    std::cout << "Starting message loop..." << std::endl;
+    std::cout << "[MAIN] Starting message loop..." << std::endl;
     std::cout.flush();
     
     MSG msg = {};
     bool running = true;
+    int frameCount = 0;
     
     // Game loop using PeekMessage (non-blocking)
     while (running)
@@ -196,7 +239,7 @@ void Application::Run()
         {
             if (msg.message == WM_QUIT)
             {
-                std::cout << "Received WM_QUIT, exiting..." << std::endl;
+                std::cout << "[MAIN] Received WM_QUIT, exiting..." << std::endl;
                 running = false;
                 break;
             }
@@ -207,6 +250,14 @@ void Application::Run()
         
         if (!running) break;
         
+        frameCount++;
+        if (frameCount % 100 == 0) {
+            auto now = std::chrono::steady_clock::now();
+            auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - m_startTime).count();
+            std::cout << "[MAIN] Frame count: " << frameCount << " | Elapsed: " << elapsed << "s" << std::endl;
+            std::cout.flush();
+        }
+        
         float deltaTime = 0.0f;
         
         try
@@ -216,9 +267,24 @@ void Application::Run()
             deltaTime = std::chrono::duration<float>(now - m_lastFrameTime).count();
             m_lastFrameTime = now;
             
-            // Update systems
-            m_graphicsEngine->Update();
-            m_geneticsIntegration->Update(deltaTime);
+            // Update systems with null checks
+            if (m_graphicsEngine)
+            {
+                m_graphicsEngine->Update();
+            }
+            else
+            {
+                std::cerr << "[ERROR] m_graphicsEngine is null!" << std::endl;
+            }
+            
+            if (m_geneticsIntegration)
+            {
+                m_geneticsIntegration->Update(deltaTime);
+            }
+            else
+            {
+                std::cerr << "[ERROR] m_geneticsIntegration is null!" << std::endl;
+            }
             
             // Process keyboard input for camera movement
             if (m_window)
@@ -240,18 +306,27 @@ void Application::Run()
         }
         catch (const std::exception& e)
         {
-            std::cerr << "Exception during game loop: " << e.what() << std::endl;
+            std::cerr << "[EXCEPTION] Standard exception during game loop: " << e.what() << std::endl;
+            std::cerr.flush();
+            break;
+        }
+        catch (...)
+        {
+            std::cerr << "[CRITICAL] Unknown exception during game loop - application will terminate" << std::endl;
             std::cerr.flush();
             break;
         }
         
-        // REMOVED: Frame rate limiting to test responsiveness
-        // if (deltaTime < 1.0f/60.0f)
-        // {
-        //     std::this_thread::sleep_for(std::chrono::microseconds(
-        //         static_cast<long long>((1.0f/60.0f - deltaTime) * 1000000.0f))); 
-        // }
+        // Enable frame rate limiting to prevent GPU overload
+        if (deltaTime < 1.0f/60.0f)
+        {
+            std::this_thread::sleep_for(std::chrono::microseconds(
+                static_cast<long long>((1.0f/60.0f - deltaTime) * 1000000.0f))); 
+        }
     }
+    
+    std::cout << "[MAIN] Message loop ended, total frames: " << frameCount << std::endl;
+    std::cout.flush();
 }
 
 void Application::UpdateFPS()
@@ -273,7 +348,15 @@ void Application::UpdateFPS()
 
 void Application::Cleanup()
 {
+    std::cout << "[MAIN] Cleaning up application..." << std::endl;
+    std::cout.flush();
+    
     m_geneticsIntegration.reset();
     m_graphicsEngine.reset();
     m_window.reset();
+    
+    std::cout << "[MAIN] Cleanup complete" << std::endl;
+    std::cout.flush();
 }
+
+

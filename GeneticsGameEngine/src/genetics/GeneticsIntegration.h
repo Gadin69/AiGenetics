@@ -32,6 +32,13 @@ class GraphicsEngine;
 // Include actual C++ header files
 #include "../graphics/GraphicsEngine.h"
 
+// Phase 4: Neural network system includes
+#include "../engine/neural/NeuralSystemManager.h"
+
+// Phase 5: PBR material system includes
+#include "../engine/rendering/materials/pbr/MaterialSystem.h"
+#include "../engine/rendering/textures/ProceduralTextureGenerator.h"
+
 // Forward declarations for engine classes
 namespace Engine {
     namespace Rendering {
@@ -47,6 +54,12 @@ struct CreatureMeshData {
     DirectX::XMFLOAT4 color;
     float scale;
     int currentLOD;
+    
+    // GPU resources for this creature
+    std::unique_ptr<Engine::Procedural::Mesh::ProceduralMeshRenderer> meshRenderer;
+    
+    // Phase 5: PBR material
+    GeneticsGameEngine::Rendering::MaterialID materialID;
 };
 
 class GeneticsIntegration
@@ -62,8 +75,12 @@ private:
     Engine::Procedural::Mesh::MeshOptimizer m_meshOptimizer;
     Engine::Procedural::Voxel::VoxelLODManager m_lodManager;
     
-    // Procedural mesh renderer (initialized with GraphicsEngine)
-    std::unique_ptr<Engine::Procedural::Mesh::ProceduralMeshRenderer> m_meshRenderer;
+    // Phase 4: Neural network indices (one per organism)
+    std::vector<size_t> m_neuralNetworkIndices;
+    
+    // Phase 5: PBR material system
+    std::unique_ptr<GeneticsGameEngine::Rendering::MaterialSystem> m_materialSystem;
+    GeneticsGameEngine::Rendering::ProceduralTextureGenerator m_textureGenerator;
     
 public:
     bool Initialize();
@@ -76,11 +93,18 @@ public:
     // Phase 3: Generate creature meshes from genetics
     void GenerateCreatureMeshes(ID3D12Device* device, ID3D12GraphicsCommandList* commandList);
     
+    // Phase 4: Neural system integration
+    void InitializeNeuralSystems();
+    void UpdateNeuralSystems(float deltaTime);
+    void ApplyNeuralBehavioralOutputs();
+    
+    // Phase 5: PBR material assignment
+    void InitializeMaterialSystem(ID3D12Device* device);
+    GeneticsGameEngine::Rendering::MaterialID AssignMaterialFromGenetics(
+        const Engine::Genetics::Taxonomy::Organism* organism);
+    
     // Get creature meshes for rendering
     const std::vector<CreatureMeshData>& GetCreatureMeshes() const { return m_creatureMeshes; }
-    
-    // Get mesh renderer
-    Engine::Procedural::Mesh::ProceduralMeshRenderer* GetMeshRenderer() { return m_meshRenderer.get(); }
     
 private:
     DirectX::XMFLOAT4 GetColorFromIndex(int index);

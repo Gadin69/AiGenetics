@@ -20,6 +20,7 @@ target_link_libraries(GeneticsGameEngine PRIVATE
     GraphicsEngine
     GeneticsIntegration
     Engine
+    Neural
     d3d12.lib
     dxgi.lib
     d3dcompiler.lib
@@ -90,4 +91,13 @@ add_custom_command(TARGET GeneticsGameEngine POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${CMAKE_CURRENT_SOURCE_DIR}/graphics/pixel.hlsl"
         "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/$<CONFIG>/pixel.hlsl"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${CMAKE_CURRENT_SOURCE_DIR}/../shaders/PBRCommon.hlsl"
+        "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/$<CONFIG>/PBRCommon.hlsl"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${CMAKE_CURRENT_SOURCE_DIR}/../shaders/PBRVertex.hlsl"
+        "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/$<CONFIG>/PBRVertex.hlsl"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${CMAKE_CURRENT_SOURCE_DIR}/../shaders/PBRPixel.hlsl"
+        "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/$<CONFIG>/PBRPixel.hlsl"
     COMMENT "Copying shader files to output directory")
