@@ -381,8 +381,8 @@ DirectX::XMFLOAT3 MarchingCubes::CalculateNormal(int x, int y, int z, const Voxe
     return DirectX::XMFLOAT3(dx, dy, dz);
 }
 
-// Complete Marching Cubes Algorithm
-// From tables.txt TABLE 13 (lines 674-737)
+// Complete Marching Cubes Algorithm - PRODUCTION REWRITE
+// Uses edge-based vertex caching, canonical tables, and interpolated normals
 MeshData MarchingCubes::GenerateMesh(const Voxel::VoxelGrid& grid, float isovalue) const {
     try {
         MeshData result;
@@ -403,147 +403,143 @@ MeshData MarchingCubes::GenerateMesh(const Voxel::VoxelGrid& grid, float isovalu
         int triangleCount = 0;
         
         // Edge-based vertex cache for proper vertex sharing
-        // Each edge is identified by (x, y, z, edgeIndex) where edgeIndex is 0-11
-        // This ensures adjacent cubes sharing an edge use the exact same vertex
-        struct EdgeKey {
-            int x, y, z, edge;
-            bool operator==(const EdgeKey& other) const {
-                return x == other.x && y == other.y && z == other.z && edge == other.edge;
-            }
-        };
+        std::unordered_map<EdgeKey, uint32_t, EdgeKeyHasher> edgeVertexCache;
         
-        struct EdgeKeyHash {
-            size_t operator()(const EdgeKey& key) const {
-                return std::hash<int>()(key.x) ^ (std::hash<int>()(key.y) << 1) ^ 
-                       (std::hash<int>()(key.z) << 2) ^ (std::hash<int>()(key.edge) << 3);
-            }
-        };
-        
-        std::unordered_map<EdgeKey, uint32_t, EdgeKeyHash> edgeVertexCache;
-        
-        for (int z = 0; z < sizeZ - 1; z++) {
-            for (int y = 0; y < sizeY - 1; y++) {
-                for (int x = 0; x < sizeX - 1; x++) {
+        for (int z = 0; z < sizeZ - 1; z++)
+        {
+            for (int y = 0; y < sizeY - 1; y++)
+            {
+                for (int x = 0; x < sizeX - 1; x++)
+                {
                     cubeCount++;
                     
-                    // 1. Get 8 corner values of current cube
-                    float cubeValues[8] = {
-                        grid.GetScalarField(x, y, z),         // 0
-                        grid.GetScalarField(x + 1, y, z),     // 1
-                        grid.GetScalarField(x + 1, y + 1, z), // 2
-                        grid.GetScalarField(x, y + 1, z),     // 3
-                        grid.GetScalarField(x, y, z + 1),     // 4
-                        grid.GetScalarField(x + 1, y, z + 1), // 5
-                        grid.GetScalarField(x + 1, y + 1, z + 1), // 6
-                        grid.GetScalarField(x, y + 1, z + 1)  // 7
-                    };
-                    
+                    // 1. Get 8 corner values, positions, and normals
+                    float cubeValues[8];
+                    DirectX::XMFLOAT3 cubePositions[8];
+                    DirectX::XMFLOAT3 cubeNormals[8];
+
+                    for (int i = 0; i < 8; i++)
+                    {
+                        int cx = x + cornerOffsets[i][0];
+                        int cy = y + cornerOffsets[i][1];
+                        int cz = z + cornerOffsets[i][2];
+
+                        cubeValues[i] = grid.GetScalarField(cx, cy, cz);
+
+                        cubePositions[i] =
+                        {
+                            cx * voxelSize + offsetX,
+                            cy * voxelSize + offsetY,
+                            cz * voxelSize + offsetZ
+                        };
+
+                        cubeNormals[i] = SampleGradient(cx, cy, cz, grid);
+                    }
+
                     // 2. Determine cube configuration index
                     int cubeIndex = 0;
-                    if (cubeValues[0] < isovalue) cubeIndex |= 1;
-                    if (cubeValues[1] < isovalue) cubeIndex |= 2;
-                    if (cubeValues[2] < isovalue) cubeIndex |= 4;
-                    if (cubeValues[3] < isovalue) cubeIndex |= 8;
-                    if (cubeValues[4] < isovalue) cubeIndex |= 16;
-                    if (cubeValues[5] < isovalue) cubeIndex |= 32;
-                    if (cubeValues[6] < isovalue) cubeIndex |= 64;
-                    if (cubeValues[7] < isovalue) cubeIndex |= 128;
-                    
-                    // 3. Skip if cube is entirely inside or outside
-                    if (cubeIndex < 0 || cubeIndex >= 256) {
-                        std::cerr << "      ERROR: cubeIndex " << cubeIndex << " out of bounds!" << std::endl;
-                        continue;
+                    for (int i = 0; i < 8; i++)
+                    {
+                        if (cubeValues[i] < isovalue)
+                            cubeIndex |= (1 << i);
                     }
-                                    
+
+                    // 3. Skip if cube is entirely inside or outside
                     if (edgeTable[cubeIndex] == 0)
                         continue;
-                    
-                    // 4. Calculate corner positions
-                    DirectX::XMFLOAT3 p[8];
-                    for (int i = 0; i < 8; ++i) {
-                        p[i] = DirectX::XMFLOAT3(
-                            (x + ((i & 1) ? 1 : 0)) * voxelSize + offsetX,
-                            (y + ((i & 2) ? 1 : 0)) * voxelSize + offsetY,
-                            (z + ((i & 4) ? 1 : 0)) * voxelSize + offsetZ
-                        );
-                    }
-                    
-                    // 5. Find intersection points on edges
-                    DirectX::XMFLOAT3 vertList[12];
-                    
-                    if (edgeTable[cubeIndex] & 1)
-                        vertList[0] = VertexInterp(isovalue, p[0], p[1], cubeValues[0], cubeValues[1]);
-                    if (edgeTable[cubeIndex] & 2)
-                        vertList[1] = VertexInterp(isovalue, p[1], p[2], cubeValues[1], cubeValues[2]);
-                    if (edgeTable[cubeIndex] & 4)
-                        vertList[2] = VertexInterp(isovalue, p[2], p[3], cubeValues[2], cubeValues[3]);
-                    if (edgeTable[cubeIndex] & 8)
-                        vertList[3] = VertexInterp(isovalue, p[3], p[0], cubeValues[3], cubeValues[0]);
-                    if (edgeTable[cubeIndex] & 16)
-                        vertList[4] = VertexInterp(isovalue, p[4], p[5], cubeValues[4], cubeValues[5]);
-                    if (edgeTable[cubeIndex] & 32)
-                        vertList[5] = VertexInterp(isovalue, p[5], p[6], cubeValues[5], cubeValues[6]);
-                    if (edgeTable[cubeIndex] & 64)
-                        vertList[6] = VertexInterp(isovalue, p[6], p[7], cubeValues[6], cubeValues[7]);
-                    if (edgeTable[cubeIndex] & 128)
-                        vertList[7] = VertexInterp(isovalue, p[7], p[4], cubeValues[7], cubeValues[4]);
-                    if (edgeTable[cubeIndex] & 256)
-                        vertList[8] = VertexInterp(isovalue, p[0], p[4], cubeValues[0], cubeValues[4]);
-                    if (edgeTable[cubeIndex] & 512)
-                        vertList[9] = VertexInterp(isovalue, p[1], p[5], cubeValues[1], cubeValues[5]);
-                    if (edgeTable[cubeIndex] & 1024)
-                        vertList[10] = VertexInterp(isovalue, p[2], p[6], cubeValues[2], cubeValues[6]);
-                    if (edgeTable[cubeIndex] & 2048)
-                        vertList[11] = VertexInterp(isovalue, p[3], p[7], cubeValues[3], cubeValues[7]);
-                    
-                    // 6. Get triangle vertex indices from triTable
-                    // All 256 entries are populated in the triTable
-                    
-                    // Lambda to get or create vertex for a specific edge
-                    auto getEdgeVertex = [&](int edgeIdx, const DirectX::XMFLOAT3& position) -> uint32_t {
-                        // Create edge key based on cube position and edge index
-                        EdgeKey edgeKey = {x, y, z, edgeIdx};
-                        
-                        // Check if this edge already has a vertex cached
-                        auto it = edgeVertexCache.find(edgeKey);
-                        if (it != edgeVertexCache.end()) {
-                            return it->second; // Return cached vertex index
+
+                    // 4. Calculate edge intersections with interpolated positions and normals
+                    DirectX::XMFLOAT3 edgeVertices[12];
+                    DirectX::XMFLOAT3 edgeNormals[12];
+
+                    for (int edge = 0; edge < 12; edge++)
+                    {
+                        if (!(edgeTable[cubeIndex] & (1 << edge)))
+                            continue;
+
+                        int c0 = edgeCorners[edge][0];
+                        int c1 = edgeCorners[edge][1];
+
+                        float v0 = cubeValues[c0];
+                        float v1 = cubeValues[c1];
+
+                        float t = (isovalue - v0) / (v1 - v0);
+
+                        const auto& p0 = cubePositions[c0];
+                        const auto& p1 = cubePositions[c1];
+
+                        edgeVertices[edge] =
+                        {
+                            p0.x + t * (p1.x - p0.x),
+                            p0.y + t * (p1.y - p0.y),
+                            p0.z + t * (p1.z - p0.z)
+                        };
+
+                        const auto& n0 = cubeNormals[c0];
+                        const auto& n1 = cubeNormals[c1];
+
+                        edgeNormals[edge] =
+                        {
+                            n0.x + t * (n1.x - n0.x),
+                            n0.y + t * (n1.y - n0.y),
+                            n0.z + t * (n1.z - n0.z)
+                        };
+
+                        // Normalize interpolated normal
+                        float nl = std::sqrt(
+                            edgeNormals[edge].x * edgeNormals[edge].x +
+                            edgeNormals[edge].y * edgeNormals[edge].y +
+                            edgeNormals[edge].z * edgeNormals[edge].z);
+
+                        if (nl > 0.00001f)
+                        {
+                            edgeNormals[edge].x /= nl;
+                            edgeNormals[edge].y /= nl;
+                            edgeNormals[edge].z /= nl;
                         }
-                        
-                        // Create new vertex and cache it
-                        uint32_t newIndex = static_cast<uint32_t>(result.vertices.size());
-                        result.vertices.push_back(position);
-                        result.normals.push_back(CalculateNormalAtVertex(position, grid, isovalue));
-                        edgeVertexCache[edgeKey] = newIndex;
-                        return newIndex;
-                    };
-                    
-                    for (int i = 0; triTable[cubeIndex][i] != -1; i += 3) {
-                        uint32_t v0Idx = triTable[cubeIndex][i];
-                        uint32_t v1Idx = triTable[cubeIndex][i + 1];
-                        uint32_t v2Idx = triTable[cubeIndex][i + 2];
-                        
-                        // Validate indices to prevent out-of-bounds access
-                        if (v0Idx >= 12 || v1Idx >= 12 || v2Idx >= 12) {
-                            std::cerr << "      ERROR: Invalid vertex index in triTable[cubeIndex=" << cubeIndex 
-                                     << "] at offset " << i << ": indices=[" << v0Idx << "," << v1Idx << "," << v2Idx << "]" << std::endl;
+                    }
+
+                    // 5. Assemble triangles from edge vertices
+                    for (int i = 0; triTable[cubeIndex][i] != -1; i += 3)
+                    {
+                        uint32_t indices[3];
+
+                        for (int v = 0; v < 3; v++)
+                        {
+                            int edge = triTable[cubeIndex][i + v];
+
+                            EdgeKey key { x, y, z, edge };
+
+                            auto it = edgeVertexCache.find(key);
+
+                            if (it != edgeVertexCache.end())
+                            {
+                                indices[v] = it->second;
+                            }
+                            else
+                            {
+                                uint32_t index = (uint32_t)result.vertices.size();
+
+                                result.vertices.push_back(edgeVertices[edge]);
+                                result.normals.push_back(edgeNormals[edge]);
+
+                                edgeVertexCache[key] = index;
+                                indices[v] = index;
+                            }
+                        }
+
+                        // Reject degenerate triangles
+                        if (indices[0] == indices[1] ||
+                            indices[1] == indices[2] ||
+                            indices[2] == indices[0])
+                        {
                             continue;
                         }
-                        
-                        // Get the three vertices for this triangle
-                        const auto& vert0 = vertList[v0Idx];
-                        const auto& vert1 = vertList[v1Idx];
-                        const auto& vert2 = vertList[v2Idx];
-                        
-                        // Get or create vertex indices using edge-based caching
-                        uint32_t idx0 = getEdgeVertex(v0Idx, vert0);
-                        uint32_t idx1 = getEdgeVertex(v1Idx, vert1);
-                        uint32_t idx2 = getEdgeVertex(v2Idx, vert2);
-                        
-                        // Add triangle indices - SWAP idx1 and idx2 to reverse winding for clockwise rasterization
-                        result.indices.push_back(idx0);
-                        result.indices.push_back(idx2);  // Swapped
-                        result.indices.push_back(idx1);  // Swapped
+
+                        // Add triangle indices
+                        result.indices.push_back(indices[0]);
+                        result.indices.push_back(indices[1]);
+                        result.indices.push_back(indices[2]);
                         
                         triangleCount++;
                     }
@@ -557,15 +553,6 @@ MeshData MarchingCubes::GenerateMesh(const Voxel::VoxelGrid& grid, float isovalu
             }
         }
         
-        // DEBUG: Print first 20 indices to verify correctness
-        std::cout << "      DEBUG - First 20 indices:" << std::endl;
-        for (size_t i = 0; i < std::min((size_t)20, result.indices.size()); ++i) {
-            std::cout << "        Index[" << i << "] = " << result.indices[i];
-            if (result.indices[i] >= result.vertices.size()) {
-                std::cout << " *** OUT OF BOUNDS! ***";
-            }
-            std::cout << std::endl;
-        }
         std::cout << "      GenerateMesh complete: " << cubeCount << " cubes processed, " 
                  << triangleCount << " triangles generated" << std::endl;
         
@@ -579,30 +566,38 @@ MeshData MarchingCubes::GenerateMesh(const Voxel::VoxelGrid& grid, float isovalu
     }
 }
 
-// Helper function to calculate normal at interpolated vertex position
-DirectX::XMFLOAT3 MarchingCubes::CalculateNormalAtVertex(const DirectX::XMFLOAT3& vertex,
-                                                         const Voxel::VoxelGrid& grid,
-                                                         float isovalue) const {
-    // Convert vertex position back to grid coordinates
-    float voxelSize = grid.GetVoxelSize();
-    int sizeX = grid.GetSizeX();
-    int sizeY = grid.GetSizeY();
-    int sizeZ = grid.GetSizeZ();
-    
-    float offsetX = -sizeX * voxelSize * 0.5f;
-    float offsetY = -sizeY * voxelSize * 0.5f;
-    float offsetZ = -sizeZ * voxelSize * 0.5f;
-    
-    int gx = static_cast<int>((vertex.x - offsetX) / voxelSize);
-    int gy = static_cast<int>((vertex.y - offsetY) / voxelSize);
-    int gz = static_cast<int>((vertex.z - offsetZ) / voxelSize);
-    
-    // Clamp to valid range
-    gx = std::max(0, std::min(gx, sizeX - 1));
-    gy = std::max(0, std::min(gy, sizeY - 1));
-    gz = std::max(0, std::min(gz, sizeZ - 1));
-    
-    return CalculateNormal(gx, gy, gz, grid);
+// Sample gradient at grid position using central differences
+DirectX::XMFLOAT3 MarchingCubes::SampleGradient(
+    int x,
+    int y,
+    int z,
+    const Voxel::VoxelGrid& grid) const
+{
+    auto sample = [&](int sx, int sy, int sz)
+    {
+        sx = std::clamp(sx, 0, grid.GetSizeX() - 1);
+        sy = std::clamp(sy, 0, grid.GetSizeY() - 1);
+        sz = std::clamp(sz, 0, grid.GetSizeZ() - 1);
+
+        return grid.GetScalarField(sx, sy, sz);
+    };
+
+    float dx = sample(x + 1,y,z) - sample(x - 1,y,z);
+    float dy = sample(x,y + 1,z) - sample(x,y - 1,z);
+    float dz = sample(x,y,z + 1) - sample(x,y,z - 1);
+
+    DirectX::XMFLOAT3 n(-dx,-dy,-dz);
+
+    float len = std::sqrt(n.x*n.x + n.y*n.y + n.z*n.z);
+
+    if (len > 0.00001f)
+    {
+        n.x /= len;
+        n.y /= len;
+        n.z /= len;
+    }
+
+    return n;
 }
 
 } // namespace Mesh
