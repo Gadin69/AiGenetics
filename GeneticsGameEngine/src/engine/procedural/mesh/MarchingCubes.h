@@ -17,6 +17,7 @@ namespace Mesh {
 struct MeshData {
     std::vector<DirectX::XMFLOAT3> vertices;
     std::vector<DirectX::XMFLOAT3> normals;
+    std::vector<DirectX::XMFLOAT4> colors;  // NEW: Per-vertex colors
     std::vector<uint32_t> indices;
 };
 

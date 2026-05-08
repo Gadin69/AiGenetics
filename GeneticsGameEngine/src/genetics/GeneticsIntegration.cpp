@@ -346,6 +346,12 @@ CreatureMeshData GeneticsIntegration::GenerateMeshForOrganism(
     float isovalue = 0.5f;
     result.mesh = m_marchingCubes.GenerateMesh(grid, isovalue);
     
+    // Step 3.5: Assign creature color to all vertices
+    std::cout << "    Assigning creature color (" << result.color.x << ", " 
+              << result.color.y << ", " << result.color.z << ") to " 
+              << result.mesh.vertices.size() << " vertices..." << std::endl;
+    result.mesh.colors.resize(result.mesh.vertices.size(), result.color);
+    
     std::cout << "    Mesh extracted: " << result.mesh.vertices.size() << " vertices, " << result.mesh.indices.size() / 3 << " triangles" << std::endl;
     
     // DEBUG: Print first 5 vertices to check if they're spread out or collapsed

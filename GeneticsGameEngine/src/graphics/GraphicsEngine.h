@@ -204,7 +204,7 @@ private:
     
     // TOD system
     TimeOfDayConfig m_todConfig;
-    float m_currentTimeOfDay = 0.25f; // 0.0 = midnight, 0.25 = sunrise, 0.5 = noon, 0.75 = sunset
+    float m_currentTimeOfDay = 0.0f; // 0.0 = noon (sun overhead), 0.25 = sunset, 0.5 = midnight, 0.75 = sunrise
     
     // Synchronization
     Microsoft::WRL::ComPtr<ID3D12Fence> m_fence;

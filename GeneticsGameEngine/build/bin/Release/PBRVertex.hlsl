@@ -1,42 +1,42 @@
-// PBR Vertex Shader
-
-#include "PBRCommon.hlsl"
-
-cbuffer VSConstants : register(b0)
+// PBR Vertex Shader with proper lighting support
+cbuffer CameraConstants : register(b0)
 {
-    matrix viewMatrix;
-    matrix projectionMatrix;
+    float4x4 viewMatrix;
+    float4x4 projectionMatrix;
 };
 
-struct VSInput
+struct VS_INPUT
 {
     float3 position : POSITION;
     float3 normal : NORMAL;
-    float2 texCoord : TEXCOORD;
+    float4 color : COLOR;
 };
 
-struct PSInput
+struct VS_OUTPUT
 {
     float4 position : SV_POSITION;
-    float3 worldPos : WORLDPOS;
-    float3 normal : NORMAL;
-    float2 texCoord : TEXCOORD;
+    float3 worldPosition : POSITION0;
+    float3 worldNormal : NORMAL0;
+    float4 baseColor : COLOR0;
 };
 
-PSInput main(VSInput input)
+VS_OUTPUT main(VS_INPUT input)
 {
-    PSInput output;
+    VS_OUTPUT output;
     
-    // Use position directly as world position (identity world matrix)
-    float4 worldPos = float4(input.position, 1.0);
-    output.worldPos = worldPos.xyz;
+    // Transform to world space (identity matrix for now - creatures at world origin)
+    float4 worldPos = float4(input.position.xyz, 1.0f);
+    output.worldPosition = worldPos.xyz;
     
-    // Correct column-vector multiplication order for DirectXMath
-    output.position = mul(projectionMatrix, mul(viewMatrix, worldPos));
+    // Transform to clip space
+    float4 viewPos = mul(viewMatrix, worldPos);
+    output.position = mul(projectionMatrix, viewPos);
     
-    // Transform normal (identity world matrix, so no transformation needed)
-    output.normal = input.normal;
-    output.texCoord = input.texCoord;
+    // Transform normal to world space (no rotation applied yet)
+    output.worldNormal = normalize(input.normal);
+    
+    // Pass through base color (creature color from genetics)
+    output.baseColor = input.color;
     
     return output;
 }

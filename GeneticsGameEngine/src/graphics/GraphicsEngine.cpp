@@ -1050,16 +1050,19 @@ bool GraphicsEngine::CreateGroundPlane()
         {
             vertices[index].position = DirectX::XMFLOAT3(
                 -gridSize / 2.0f + x * step,
-                -1.5f,  // Ground plane below pyramid base (pyramid base is at Y=-1)
+                0.0f,  // Ground plane at Y=0 (visible level)
                 -gridSize / 2.0f + z * step
             );
             
-            // Checkerboard pattern
-            float checker = ((x + z) % 2 == 0) ? 1.0f : 0.8f;
+            // Ground plane normal pointing UP
+            vertices[index].normal = DirectX::XMFLOAT3(0.0f, 1.0f, 0.0f);
+            
+            // BRIGHT checkerboard pattern for visibility
+            float checker = ((x + z) % 2 == 0) ? 1.0f : 0.7f;
             vertices[index].color = DirectX::XMFLOAT4(
-                0.3f * checker,
-                0.6f * checker,
-                0.2f * checker,
+                0.8f * checker,  // Bright red
+                0.2f * checker,  // Low green
+                0.2f * checker,  // Low blue
                 1.0f
             );
             index++;
@@ -1341,7 +1344,19 @@ void GraphicsEngine::PopulateCommandList(Engine::Rendering::BaseCameraController
     // Set primitive topology
     m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     
-    // Draw reference geometry to see camera movement
+    // Render sky dome FIRST (background - doesn't write depth)
+    RenderSkyDome();
+    
+    // Reset to basic PSO and root signature for ground plane and other geometry
+    m_commandList->SetGraphicsRootSignature(m_rootSignature.Get());
+    if (m_wireframeMode && m_wireframePipelineState)
+    {
+        m_commandList->SetPipelineState(m_wireframePipelineState.Get());
+    }
+    else
+    {
+        m_commandList->SetPipelineState(m_pipelineState.Get());
+    }
     
     // Draw ground plane (reference grid)
     m_commandList->IASetVertexBuffers(0, 1, &m_groundVertexBufferView);
@@ -1351,9 +1366,6 @@ void GraphicsEngine::PopulateCommandList(Engine::Rendering::BaseCameraController
     // Draw 3D pyramid as reference object
     m_commandList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
     m_commandList->DrawInstanced(12, 1, 0, 0);
-    
-    // Render sky dome (background)
-    RenderSkyDome();
     
     // Render creature meshes
     static bool printed = false;
@@ -2229,6 +2241,7 @@ bool GraphicsEngine::CreateSkyDomePipelineState()
     // Compile shaders
     ShaderIncludeHandler includeHandler;
     UINT compileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
+    ID3DBlob* errorBlob = nullptr;
     
     HRESULT hr = D3DCompileFromFile(
         L"SkyDomeVertex.hlsl",
@@ -2257,13 +2270,28 @@ bool GraphicsEngine::CreateSkyDomePipelineState()
         compileFlags,
         0,
         &m_skyDomePixelShaderBlob,
-        nullptr
+        &errorBlob
     );
     
     if (FAILED(hr))
     {
-        std::cerr << "Failed to compile sky dome pixel shader" << std::endl;
+        if (errorBlob)
+        {
+            std::cerr << "Sky dome pixel shader compilation error: " << (char*)errorBlob->GetBufferPointer() << std::endl;
+            errorBlob->Release();
+        }
+        else
+        {
+            std::cerr << "Failed to compile sky dome pixel shader (no error details)" << std::endl;
+        }
         return false;
+    }
+    
+    // Check for warnings even if compilation succeeded
+    if (errorBlob)
+    {
+        std::cout << "Sky dome pixel shader warnings: " << (char*)errorBlob->GetBufferPointer() << std::endl;
+        errorBlob->Release();
     }
     
     // Input layout: position only
@@ -2282,7 +2310,7 @@ bool GraphicsEngine::CreateSkyDomePipelineState()
     
     // Rasterizer state - render back faces (inside of dome)
     psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
-    psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_FRONT; // Cull outside faces
+    psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE; // No culling - we're inside the dome
     psoDesc.RasterizerState.FrontCounterClockwise = FALSE;
     psoDesc.RasterizerState.DepthClipEnable = TRUE;
     
@@ -2328,13 +2356,16 @@ bool GraphicsEngine::CreateSkyDomePipelineState()
 void GraphicsEngine::UpdateLightingFromTOD()
 {
     // Calculate sun direction from angle
-    m_todConfig.sunAngle = m_currentTimeOfDay * 2.0f * DirectX::XM_PI;
+    // At time 0.0 (noon): sun should be overhead (0, 1, 0)
+    // At time 0.25 (sunset): sun should be at horizon (-1, 0, 0)
+    // At time 0.5 (midnight): sun should be below (0, -1, 0)
+    m_todConfig.sunAngle = m_currentTimeOfDay * 2.0f * DirectX::XM_PI - DirectX::XM_PIDIV2;
     
-    // Sun direction (circular path)
+    // Sun direction (circular path in Y-Z plane)
     m_lightData.sunDirection = {
-        cosf(m_todConfig.sunAngle),
-        sinf(m_todConfig.sunAngle),
-        0.3f // Slight offset for visual interest
+        0.3f, // Slight X offset for visual interest
+        cosf(m_todConfig.sunAngle),  // Y: up/down
+        sinf(m_todConfig.sunAngle)   // Z: forward/back
     };
     
     // Normalize
@@ -2359,12 +2390,28 @@ void GraphicsEngine::UpdateLightingFromTOD()
     
     // Copy to GPU
     memcpy(m_lightCBVData, &m_lightData, sizeof(LightConstants));
+    
+    // DEBUG: Print lighting values on first 3 frames
+    static int debugFrame = 0;
+    if (debugFrame < 3) {
+        std::cout << "[LIGHTING DEBUG] Frame " << debugFrame << ":" << std::endl;
+        std::cout << "  Sun Direction: (" << m_lightData.sunDirection.x << ", " 
+                  << m_lightData.sunDirection.y << ", " << m_lightData.sunDirection.z << ")" << std::endl;
+        std::cout << "  Sun Color: (" << m_lightData.sunColor.x << ", " 
+                  << m_lightData.sunColor.y << ", " << m_lightData.sunColor.z << ")" << std::endl;
+        std::cout << "  Sun Intensity: " << m_lightData.sunIntensity << std::endl;
+        std::cout << "  Ambient Color: (" << m_lightData.ambientColor.x << ", " 
+                  << m_lightData.ambientColor.y << ", " << m_lightData.ambientColor.z << ")" << std::endl;
+        std::cout << "  Ambient Intensity: " << m_lightData.ambientIntensity << std::endl;
+        debugFrame++;
+    }
 }
 
 void GraphicsEngine::RenderSkyDome()
 {
-    if (!m_commandList || !m_skyDomePipelineState)
+    if (!m_commandList || !m_skyDomePipelineState) {
         return;
+    }
     
     // Set sky dome PSO
     m_commandList->SetPipelineState(m_skyDomePipelineState.Get());
@@ -2377,10 +2424,17 @@ void GraphicsEngine::RenderSkyDome()
         m_cameraConstantBuffer->GetGPUVirtualAddress()
     );
     
+    // CRITICAL: Bind light constant buffer (root parameter 2) for sun disc
+    m_commandList->SetGraphicsRootConstantBufferView(
+        2,
+        m_lightConstantBuffer->GetGPUVirtualAddress()
+    );
+    
     // Set vertex/index buffers
     m_commandList->IASetVertexBuffers(0, 1, &m_skyDomeVertexBufferView);
     m_commandList->IASetIndexBuffer(&m_skyDomeIndexBufferView);
     m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    
     
     // Draw sky dome
     m_commandList->DrawIndexedInstanced(m_skyDomeIndexCount, 1, 0, 0, 0);

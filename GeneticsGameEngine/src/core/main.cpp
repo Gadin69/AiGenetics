@@ -260,12 +260,6 @@ void Application::Run()
         if (!running) break;
         
         frameCount++;
-        if (frameCount % 100 == 0) {
-            auto now = std::chrono::steady_clock::now();
-            auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - m_startTime).count();
-            std::cout << "[MAIN] Frame count: " << frameCount << " | Elapsed: " << elapsed << "s" << std::endl;
-            std::cout.flush();
-        }
         
         float deltaTime = 0.0f;
         

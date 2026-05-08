@@ -193,8 +193,6 @@ private:
     void UpdateMatrices() const {
         // CAMERA MOVEMENT - DO NOT MODIFY unless explicitly requested
         // Creates view matrix using world-up vector (0,1,0) to prevent roll/gimbal lock
-        std::cout << "[CAMERA] UpdateMatrices called - position: (" 
-                  << m_position.x << ", " << m_position.y << ", " << m_position.z << ")" << std::endl;
         
         // Create view matrix
         DirectX::XMFLOAT3 forward = GetForwardVector();

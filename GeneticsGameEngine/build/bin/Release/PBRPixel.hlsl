@@ -1,96 +1,125 @@
-// PBR Pixel Shader
-
-#include "PBRCommon.hlsl"
-
-cbuffer PSConstants : register(b1)
-{
-    PBRMaterial material;
-};
-
+// PBR Pixel Shader - Cook-Torrance BRDF
 cbuffer LightConstants : register(b2)
 {
-    Light lights[MAX_LIGHTS];
-    int lightCount;
+    float3 sunDirection;
+    float sunIntensity;
+    
+    float3 sunColor;
+    float ambientIntensity;
+    
     float3 ambientColor;
-    float exposure;
-    float4x4 lightViewMatrix;
-    float4x4 lightProjMatrix;
-    float shadowEnabled;
+    float groundAmbientIntensity;
+    
+    float3 groundAmbientColor;
+    float pad0;
 };
 
-cbuffer CameraConstants : register(b3)
+cbuffer CameraPosition : register(b3)
 {
     float3 cameraPosition;
-    float padding;
+    float pad1;
 };
 
-Texture2D shadowMap : register(t0);
-SamplerComparisonState shadowSampler : register(s0);
-
-struct PSInput
+struct PS_INPUT
 {
     float4 position : SV_POSITION;
-    float3 worldPos : WORLDPOS;
-    float3 normal : NORMAL;
-    float2 texCoord : TEXCOORD;
+    float3 worldPosition : POSITION0;
+    float3 worldNormal : NORMAL0;
+    float4 baseColor : COLOR0;
 };
 
-float4 main(PSInput input) : SV_TARGET
+// Fresnel-Schlick approximation
+float3 FresnelSchlick(float cosTheta, float3 F0)
 {
-    float3 N = normalize(input.normal);
-    float3 V = normalize(cameraPosition - input.worldPos);
+    return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
+}
+
+// Normal Distribution Function - GGX/Trowbridge-Reitz
+float DistributionGGX(float3 N, float3 H, float roughness)
+{
+    float a = roughness * roughness;
+    float a2 = a * a;
+    float NdotH = max(dot(N, H), 0.0);
+    float NdotH2 = NdotH * NdotH;
+    
+    float denom = NdotH2 * (a2 - 1.0) + 1.0;
+    return a2 / (3.14159265 * denom * denom);
+}
+
+// Geometry Function - Schlick-GGX
+float GeometrySchlickGGX(float NdotV, float roughness)
+{
+    float r = roughness + 1.0;
+    float k = (r * r) / 8.0;
+    return NdotV / (NdotV * (1.0 - k) + k);
+}
+
+float GeometrySmith(float3 N, float3 V, float3 L, float roughness)
+{
+    float NdotV = max(dot(N, V), 0.0);
+    float NdotL = max(dot(N, L), 0.0);
+    float ggx1 = GeometrySchlickGGX(NdotV, roughness);
+    float ggx2 = GeometrySchlickGGX(NdotL, roughness);
+    return ggx1 * ggx2;
+}
+
+float4 main(PS_INPUT input) : SV_TARGET
+{
+    float3 N = normalize(input.worldNormal);
+    float3 V = normalize(cameraPosition - input.worldPosition);
+    float3 baseColor = input.baseColor.rgb;
+    
+    // PBR material parameters (can be driven by genetics later)
+    float metallic = 0.0;    // Creatures are dielectric (non-metallic)
+    float roughness = 0.6;   // Moderate roughness for organic surfaces
+    
+    // Calculate F0 (reflectance at normal incidence)
+    float3 F0 = float3(0.04, 0.04, 0.04); // Dielectric F0
+    F0 = lerp(F0, baseColor, metallic);
     
     // Ambient lighting
-    float3 ambient = ambientColor * material.albedo * material.ambientOcclusion;
+    float3 ambient = baseColor * ambientColor * ambientIntensity;
     
-    // Calculate shadow factor
-    float shadowFactor = 1.0;
-    if (shadowEnabled > 0.5)
+    // Direct lighting (sun)
+    float3 Lo = float3(0.0, 0.0, 0.0);
+    
+    float3 L = normalize(-sunDirection);
+    float3 H = normalize(V + L);
+    
+    float NdotL = max(dot(N, L), 0.0);
+    
+    if (NdotL > 0.0)
     {
-        // Transform world position to light's clip space
-        float4 worldPos = float4(input.worldPos, 1.0);
-        float4 lightViewPos = mul(worldPos, lightViewMatrix);
-        float4 lightClipPos = mul(lightViewPos, lightProjMatrix);
+        // Cook-Torrance BRDF
+        float NDF = DistributionGGX(N, H, roughness);
+        float G = GeometrySmith(N, V, L, roughness);
+        float3 F = FresnelSchlick(max(dot(H, V), 0.0), F0);
         
-        // Normalize to [0, 1] range
-        float3 shadowCoord = lightClipPos.xyz / lightClipPos.w;
-        shadowCoord.xy = shadowCoord.xy * 0.5 + 0.5;
-        shadowCoord.y = 1.0 - shadowCoord.y;  // Flip Y for texture coordinates
+        // specular = (NDF * G * F) / (4 * (N.V) * (N.L))
+        float3 numerator = NDF * G * F;
+        float denominator = 4.0 * max(dot(N, V), 0.0) * NdotL + 0.0001;
+        float3 specular = numerator / denominator;
         
-        // Sample shadow map
-        if (shadowCoord.x >= 0.0 && shadowCoord.x <= 1.0 &&
-            shadowCoord.y >= 0.0 && shadowCoord.y <= 1.0 &&
-            shadowCoord.z >= 0.0 && shadowCoord.z <= 1.0)
-        {
-            float closestDepth = shadowMap.SampleCmpLevelZero(
-                shadowSampler,
-                shadowCoord.xy,
-                shadowCoord.z - 0.005  // Small bias to prevent shadow acne
-            );
-            shadowFactor = closestDepth;
-        }
+        // kD = 1 - kS (energy conservation)
+        float3 kS = F;
+        float3 kD = float3(1.0, 1.0, 1.0) - kS;
+        kD *= 1.0 - metallic;
+        
+        // Radiance equation
+        Lo += (kD * baseColor / 3.14159265 + specular) * sunColor * sunIntensity * NdotL;
     }
     
-    // Calculate lighting from all lights
-    float3 finalColor = ambient;
+    // Ground ambient (bounce light)
+    float3 groundAmbient = baseColor * groundAmbientColor * groundAmbientIntensity * 0.5;
     
-    for (int i = 0; i < lightCount && i < MAX_LIGHTS; i++)
-    {
-        float3 lightContrib = CalculateLighting(input.worldPos, N, material, lights[i], V);
-        finalColor += lightContrib * shadowFactor;  // Apply shadow to direct lighting
-    }
+    // Final color
+    float3 result = ambient + Lo + groundAmbient;
     
-    // Add emissive
-    finalColor += material.emissive * material.emissiveIntensity;
-    
-    // Apply exposure
-    finalColor *= exposure;
-    
-    // Apply ACES Filmic tone mapping
-    finalColor = ACESFilmicToneMapping(finalColor);
+    // Tone mapping (simple Reinhard)
+    result = result / (result + float3(1.0, 1.0, 1.0));
     
     // Gamma correction
-    finalColor = pow(finalColor, float3(1.0 / 2.2, 1.0 / 2.2, 1.0 / 2.2));
+    result = pow(result, float3(1.0/2.2, 1.0/2.2, 1.0/2.2));
     
-    return float4(finalColor, 1.0);
+    return float4(result, input.baseColor.a);
 }

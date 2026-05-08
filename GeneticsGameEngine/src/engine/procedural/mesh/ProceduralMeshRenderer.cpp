@@ -179,11 +179,19 @@ void ProceduralMeshRenderer::UploadMeshData(const MeshData& mesh, ID3D12Graphics
             vertexData.push_back(0.0f);
         }
         
-        // Color (default white with full alpha)
-        vertexData.push_back(1.0f);  // R
-        vertexData.push_back(1.0f);  // G
-        vertexData.push_back(1.0f);  // B
-        vertexData.push_back(1.0f);  // A
+        // Color (use mesh color if available, otherwise default white)
+        if (i < mesh.colors.size()) {
+            vertexData.push_back(mesh.colors[i].x);  // R
+            vertexData.push_back(mesh.colors[i].y);  // G
+            vertexData.push_back(mesh.colors[i].z);  // B
+            vertexData.push_back(mesh.colors[i].w);  // A
+        } else {
+            // Default white with full alpha
+            vertexData.push_back(1.0f);  // R
+            vertexData.push_back(1.0f);  // G
+            vertexData.push_back(1.0f);  // B
+            vertexData.push_back(1.0f);  // A
+        }
     }
     
     // Prepare index data
