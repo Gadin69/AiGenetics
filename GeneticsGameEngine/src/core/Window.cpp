@@ -259,6 +259,13 @@ LRESULT Window::HandleMessage(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPa
                 case 'S': m_keyS = true; break;
                 case 'A': m_keyA = true; break;
                 case 'D': m_keyD = true; break;
+                case VK_ESCAPE:
+                    // Toggle Main Control Panel visibility
+                    if (m_graphicsEngine)
+                    {
+                        m_graphicsEngine->ToggleControlPanel();
+                    }
+                    break;
                 case '1': // Toggle wireframe mode
                     std::cout << "[DEBUG] '1' key pressed!" << std::endl;
                     if (m_graphicsEngine)

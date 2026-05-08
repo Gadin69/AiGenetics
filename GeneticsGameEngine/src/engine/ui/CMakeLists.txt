@@ -3,6 +3,8 @@
 add_library(UI
     ImGuiRenderer.cpp
     ImGuiRenderer.h
+    panels/UIManager.cpp
+    panels/UIManager.h
 )
 
 target_include_directories(UI PUBLIC

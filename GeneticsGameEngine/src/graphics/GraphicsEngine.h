@@ -13,6 +13,11 @@
 class GeneticsIntegration;
 struct CreatureMeshData;
 class ImGuiRenderer;
+namespace Engine {
+    namespace UI {
+        class UIManager;
+    }
+}
 
 namespace Engine {
     namespace Rendering {
@@ -94,6 +99,13 @@ public:
     void ToggleWireframe() { m_wireframeMode = !m_wireframeMode; }
     bool IsWireframeMode() const { return m_wireframeMode; }
     
+    // UI Panel toggle
+    void ToggleControlPanel();
+    bool IsControlPanelVisible() const;
+    
+    // Application quit
+    void Quit();
+    
     // Mouse input handling for UI
     void OnMouseMove(int x, int y);
     void OnMouseLeave();
@@ -148,6 +160,9 @@ private:
     
     // Wireframe rendering state
     bool m_wireframeMode = false;
+    
+    // UI Manager (handles all panel rendering and state)
+    std::unique_ptr<Engine::UI::UIManager> m_uiManager;
     
     // UI button state (for clickable wireframe toggle)
     struct UIButton {

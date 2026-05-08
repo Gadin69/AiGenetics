@@ -1,6 +1,7 @@
 #include "GraphicsEngine.h"
 #include "../engine/rendering/camera/CameraController.h"
 #include "../engine/ui/ImGuiRenderer.h"
+#include "../engine/ui/panels/UIManager.h"
 #include "../genetics/GeneticsIntegration.h"
 #include <iostream>
 #include <fstream>
@@ -113,6 +114,13 @@ struct CD3DX12_RANGE : public D3D12_RANGE
 // Constructor
 GraphicsEngine::GraphicsEngine()
 {
+    // Initialize UI Manager
+    m_uiManager = std::make_unique<Engine::UI::UIManager>();
+    
+    // Set up quit callback
+    m_uiManager->SetQuitCallback([this]() {
+        this->Quit();
+    });
 }
 
 // Destructor
@@ -332,13 +340,18 @@ void GraphicsEngine::Render(std::unique_ptr<GeneticsIntegration>& geneticsIntegr
         }
         WaitForPreviousFrame();
         
-        // Start new ImGui frame
-        if (m_imguiRenderer)
+        // Start new ImGui frame and render UI panels
+        if (m_imguiRenderer && m_uiManager)
         {
             m_imguiRenderer->NewFrame();
             
-            // Demo window for testing
-            ImGui::ShowDemoWindow();
+            // Delegate all panel rendering to UIManager
+            m_uiManager->RenderPanels(
+                geneticsIntegration.get(),
+                camera,
+                frameCount,
+                m_wireframeMode
+            );
         }
         
         // Get creature meshes
@@ -2901,6 +2914,33 @@ void GraphicsEngine::RenderShadowMap()
     barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
     m_commandList->ResourceBarrier(1, &barrier);
     m_shadowMapState = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;  // Update tracked state
+}
+
+// UI Panel control methods
+void GraphicsEngine::ToggleControlPanel()
+{
+    if (m_uiManager)
+    {
+        bool isVisible = m_uiManager->IsControlPanelVisible();
+        m_uiManager->SetControlPanelVisible(!isVisible);
+    }
+}
+
+bool GraphicsEngine::IsControlPanelVisible() const
+{
+    if (m_uiManager)
+    {
+        return m_uiManager->IsControlPanelVisible();
+    }
+    return false;
+}
+
+void GraphicsEngine::Quit()
+{
+    if (m_hWnd)
+    {
+        PostMessage(m_hWnd, WM_CLOSE, 0, 0);
+    }
 }
 
 
