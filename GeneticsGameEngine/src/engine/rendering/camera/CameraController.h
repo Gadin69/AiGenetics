@@ -97,13 +97,13 @@ public:
     
     void MoveForward(float distance) override {
         DirectX::XMFLOAT3 forward = GetForwardVector();
-        std::cout << "[CAMERA] MoveForward(" << distance << ") - forward vector: (" 
-                  << forward.x << ", " << forward.y << ", " << forward.z << ")" << std::endl;
-        std::cout << "[CAMERA] Position BEFORE: (" << m_position.x << ", " << m_position.y << ", " << m_position.z << ")" << std::endl;
+        // std::cout << "[CAMERA] MoveForward(" << distance << ") - forward vector: (" 
+        //           << forward.x << ", " << forward.y << ", " << forward.z << ")" << std::endl;
+        // std::cout << "[CAMERA] Position BEFORE: (" << m_position.x << ", " << m_position.y << ", " << m_position.z << ")" << std::endl;
         m_position.x += forward.x * distance;
         m_position.y += forward.y * distance;
         m_position.z += forward.z * distance;
-        std::cout << "[CAMERA] Position AFTER: (" << m_position.x << ", " << m_position.y << ", " << m_position.z << ")" << std::endl;
+        // std::cout << "[CAMERA] Position AFTER: (" << m_position.x << ", " << m_position.y << ", " << m_position.z << ")" << std::endl;
         m_matricesDirty = true;
     }
     

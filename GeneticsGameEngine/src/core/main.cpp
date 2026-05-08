@@ -53,6 +53,9 @@ BOOL WINAPI ConsoleCtrlHandler(DWORD fdwCtrlType)
 // Global camera system instance
 std::unique_ptr<Engine::Rendering::CameraSystem> g_cameraSystem;
 
+// Global window handle for ImGui
+HWND g_hWnd = nullptr;
+
 class Application
 {
 private:
@@ -138,6 +141,10 @@ bool Application::Initialize()
         std::cerr.flush();
         return false;
     }
+    
+    // Set global window handle for ImGui
+    g_hWnd = m_window->GetHwnd();
+    
     std::cout << "Window initialized successfully." << std::endl;
     std::cout.flush();
     

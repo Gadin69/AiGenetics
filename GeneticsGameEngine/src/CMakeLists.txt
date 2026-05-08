@@ -1,5 +1,8 @@
 # Main source directory CMake configuration
 
+# Add third-party libraries
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../third_party ${CMAKE_BINARY_DIR}/third_party)
+
 # Add subdirectories
 add_subdirectory(core)
 add_subdirectory(graphics)
@@ -21,6 +24,8 @@ target_link_libraries(GeneticsGameEngine PRIVATE
     GeneticsIntegration
     Engine
     Neural
+    UI
+    imgui
     d3d12.lib
     dxgi.lib
     d3dcompiler.lib
@@ -58,6 +63,8 @@ target_include_directories(GeneticsGameEngine PRIVATE
     genetics
     engine
     .
+    ${CMAKE_CURRENT_SOURCE_DIR}/../third_party/imgui
+    ${CMAKE_CURRENT_SOURCE_DIR}/../third_party/imgui/backends
 )
 
 # Add compile definitions for Windows
@@ -100,4 +107,13 @@ add_custom_command(TARGET GeneticsGameEngine POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${CMAKE_CURRENT_SOURCE_DIR}/../shaders/PBRPixel.hlsl"
         "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/$<CONFIG>/PBRPixel.hlsl"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${CMAKE_CURRENT_SOURCE_DIR}/graphics/SkyDomeVertex.hlsl"
+        "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/$<CONFIG>/SkyDomeVertex.hlsl"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${CMAKE_CURRENT_SOURCE_DIR}/graphics/SkyDomePixel.hlsl"
+        "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/$<CONFIG>/SkyDomePixel.hlsl"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${CMAKE_CURRENT_SOURCE_DIR}/graphics/ShadowVS.hlsl"
+        "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/$<CONFIG>/ShadowVS.hlsl"
     COMMENT "Copying shader files to output directory")

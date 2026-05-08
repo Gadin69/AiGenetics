@@ -12,6 +12,7 @@
 // Forward declarations
 class GeneticsIntegration;
 struct CreatureMeshData;
+class ImGuiRenderer;
 
 namespace Engine {
     namespace Rendering {
@@ -198,6 +199,25 @@ private:
     UINT m_skyDomeVertexCount = 0;
     UINT m_skyDomeIndexCount = 0;
     
+    // Shadow mapping system
+    static const UINT ShadowMapSize = 2048;  // 2048x2048 shadow map resolution
+    Microsoft::WRL::ComPtr<ID3D12Resource> m_shadowMapTexture;       // Depth texture for shadows
+    Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_shadowMapSrvHeap; // SRV heap for shadow map
+    Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_shadowMapDsvHeap; // DSV heap for shadow map
+    D3D12_SHADER_RESOURCE_VIEW_DESC m_shadowMapSrvDesc = {};
+    
+    // Shadow map constant buffer (light view/projection matrices)
+    Microsoft::WRL::ComPtr<ID3D12Resource> m_shadowMapConstantBuffer;
+    UINT8* m_shadowCBVData = nullptr;
+    
+    // Shadow map PSO (depth-only rendering)
+    Microsoft::WRL::ComPtr<ID3D12PipelineState> m_shadowMapPipelineState;
+    Microsoft::WRL::ComPtr<ID3D12RootSignature> m_shadowMapRootSignature;
+    Microsoft::WRL::ComPtr<ID3DBlob> m_shadowVertexShaderBlob;
+    
+    // Shadow map current GPU state (for proper resource barriers)
+    D3D12_RESOURCE_STATES m_shadowMapState = D3D12_RESOURCE_STATE_DEPTH_WRITE;
+    
     // Shader blobs for sky dome
     Microsoft::WRL::ComPtr<ID3DBlob> m_skyDomeVertexShaderBlob;
     Microsoft::WRL::ComPtr<ID3DBlob> m_skyDomePixelShaderBlob;
@@ -216,6 +236,9 @@ private:
     UINT m_width = 800;
     UINT m_height = 600;
     
+    // ImGui renderer
+    std::unique_ptr<ImGuiRenderer> m_imguiRenderer;
+    
     // Initialization methods
     bool InitializeDX12();
     bool CreateSwapChain();
@@ -223,6 +246,12 @@ private:
     bool CreateDepthBuffer();
     bool CreateRenderTargetViews();
     bool CreateCommandObjects();
+    
+    // Shadow mapping methods
+    bool CreateShadowMap();
+    bool CreateShadowMapPipelineState();
+    void RenderShadowMap();
+    void UpdateShadowMapConstantBuffer();
     bool CreateSyncObjects();
     bool CompileShaders();
     bool CreateRootSignature();

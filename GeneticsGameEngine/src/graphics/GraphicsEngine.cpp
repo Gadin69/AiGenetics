@@ -1,5 +1,6 @@
 #include "GraphicsEngine.h"
 #include "../engine/rendering/camera/CameraController.h"
+#include "../engine/ui/ImGuiRenderer.h"
 #include "../genetics/GeneticsIntegration.h"
 #include <iostream>
 #include <fstream>
@@ -181,6 +182,13 @@ bool GraphicsEngine::Initialize(HWND hWnd)
             return false;
         }
         
+        // Step 5.5: Create shadow map
+        if (!CreateShadowMap())
+        {
+            std::cerr << "Failed to create shadow map" << std::endl;
+            return false;
+        }
+        
         // Step 6: Create render target views
         if (!CreateRenderTargetViews())
         {
@@ -251,6 +259,22 @@ bool GraphicsEngine::Initialize(HWND hWnd)
             return false;
         }
         
+        // Step 15: Initialize ImGui
+        m_imguiRenderer = std::make_unique<ImGuiRenderer>();
+        if (!m_imguiRenderer->Initialize(
+            m_device.Get(),
+            m_commandQueue.Get(),
+            m_rtvHeap.Get(),
+            m_dsvHeap.Get(),
+            m_swapChain.Get(),
+            FrameCount,
+            m_width,
+            m_height))
+        {
+            std::cerr << "Failed to initialize ImGui" << std::endl;
+            return false;
+        }
+        
         std::cout << "DirectX 12 initialization completed successfully!" << std::endl;
         return true;
     }
@@ -308,6 +332,15 @@ void GraphicsEngine::Render(std::unique_ptr<GeneticsIntegration>& geneticsIntegr
         }
         WaitForPreviousFrame();
         
+        // Start new ImGui frame
+        if (m_imguiRenderer)
+        {
+            m_imguiRenderer->NewFrame();
+            
+            // Demo window for testing
+            ImGui::ShowDemoWindow();
+        }
+        
         // Get creature meshes
         const auto& creatures = geneticsIntegration->GetCreatureMeshes();
         
@@ -323,6 +356,7 @@ void GraphicsEngine::Render(std::unique_ptr<GeneticsIntegration>& geneticsIntegr
             std::cout << "[RENDER] Executing command list..." << std::endl;
             std::cout.flush();
         }
+        
         ID3D12CommandList* ppCommandLists[] = { m_commandList.Get() };
         m_commandQueue->ExecuteCommandLists(1, ppCommandLists);
         
@@ -629,6 +663,133 @@ bool GraphicsEngine::CreateDepthBuffer()
     );
     
     std::cout << "  Depth/stencil buffer created successfully" << std::endl;
+    return true;
+}
+
+bool GraphicsEngine::CreateShadowMap()
+{
+    std::cout << "  Creating shadow map (" << ShadowMapSize << "x" << ShadowMapSize << ")..." << std::endl;
+    
+    // Create shadow map depth texture
+    D3D12_HEAP_PROPERTIES heapProps = {};
+    heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
+    
+    D3D12_RESOURCE_DESC shadowDesc = {};
+    shadowDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+    shadowDesc.Alignment = 0;
+    shadowDesc.Width = ShadowMapSize;
+    shadowDesc.Height = ShadowMapSize;
+    shadowDesc.DepthOrArraySize = 1;
+    shadowDesc.MipLevels = 1;
+    shadowDesc.Format = DXGI_FORMAT_R32_TYPELESS;  // Typeless for both DSV and SRV
+    shadowDesc.SampleDesc.Count = 1;
+    shadowDesc.SampleDesc.Quality = 0;
+    shadowDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+    shadowDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+    
+    D3D12_CLEAR_VALUE clearValue = {};
+    clearValue.Format = DXGI_FORMAT_D32_FLOAT;
+    clearValue.DepthStencil = { 1.0f, 0 };
+    
+    ThrowIfFailed(
+        m_device->CreateCommittedResource(
+            &heapProps,
+            D3D12_HEAP_FLAG_NONE,
+            &shadowDesc,
+            D3D12_RESOURCE_STATE_DEPTH_WRITE,
+            &clearValue,
+            IID_PPV_ARGS(&m_shadowMapTexture)
+        ),
+        "Create shadow map texture failed"
+    );
+    
+    // Create SRV descriptor heap for shadow map
+    D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc = {};
+    srvHeapDesc.NumDescriptors = 1;
+    srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+    srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+    
+    ThrowIfFailed(
+        m_device->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&m_shadowMapSrvHeap)),
+        "Create shadow map SRV heap failed"
+    );
+    
+    // Create SRV for shadow map
+    D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+    srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+    srvDesc.Format = DXGI_FORMAT_R32_FLOAT;  // Read as float in shader
+    srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+    srvDesc.Texture2D.MostDetailedMip = 0;
+    srvDesc.Texture2D.MipLevels = 1;
+    srvDesc.Texture2D.PlaneSlice = 0;
+    srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
+    
+    m_device->CreateShaderResourceView(
+        m_shadowMapTexture.Get(),
+        &srvDesc,
+        m_shadowMapSrvHeap->GetCPUDescriptorHandleForHeapStart()
+    );
+    
+    // Create DSV descriptor heap for shadow map (separate from main scene DSV)
+    D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc = {};
+    dsvHeapDesc.NumDescriptors = 1;
+    dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+    dsvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+    
+    ThrowIfFailed(
+        m_device->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(&m_shadowMapDsvHeap)),
+        "Create shadow map DSV heap failed"
+    );
+    
+    // Create DSV for shadow map
+    D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
+    dsvDesc.Format = DXGI_FORMAT_D32_FLOAT;
+    dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+    dsvDesc.Flags = D3D12_DSV_FLAG_NONE;
+    
+    m_device->CreateDepthStencilView(
+        m_shadowMapTexture.Get(),
+        &dsvDesc,
+        m_shadowMapDsvHeap->GetCPUDescriptorHandleForHeapStart()
+    );
+    
+    // Create shadow map constant buffer
+    D3D12_RESOURCE_DESC cbDesc = {};
+    cbDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+    cbDesc.Width = 256;  // Two 4x4 matrices = 128 bytes, but need 256 alignment
+    cbDesc.Height = 1;
+    cbDesc.DepthOrArraySize = 1;
+    cbDesc.MipLevels = 1;
+    cbDesc.SampleDesc.Count = 1;
+    cbDesc.SampleDesc.Quality = 0;
+    cbDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;  // Changed from UNKNOWN
+    cbDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+    
+    D3D12_HEAP_PROPERTIES cbHeapProps = {};
+    cbHeapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
+    cbHeapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+    cbHeapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+    
+    ThrowIfFailed(
+        m_device->CreateCommittedResource(
+            &cbHeapProps,
+            D3D12_HEAP_FLAG_NONE,
+            &cbDesc,
+            D3D12_RESOURCE_STATE_GENERIC_READ,
+            nullptr,
+            IID_PPV_ARGS(&m_shadowMapConstantBuffer)
+        ),
+        "Create shadow map constant buffer failed"
+    );
+    
+    // Map constant buffer
+    D3D12_RANGE readRange = { 0, 0 };  // No read range for upload heap
+    ThrowIfFailed(
+        m_shadowMapConstantBuffer->Map(0, &readRange, reinterpret_cast<void**>(&m_shadowCBVData)),
+        "Map shadow map constant buffer failed"
+    );
+    
+    std::cout << "  Shadow map created successfully" << std::endl;
     return true;
 }
 
@@ -1313,11 +1474,8 @@ void GraphicsEngine::PopulateCommandList(Engine::Rendering::BaseCameraController
         nullptr
     );
     
-    // CRITICAL: Bind render targets for drawing (THIS WAS MISSING!)
-    CD3DX12_CPU_DESCRIPTOR_HANDLE dsvHandle(
-        m_dsvHeap->GetCPUDescriptorHandleForHeapStart()
-    );
-    m_commandList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
+    // DO NOT bind render targets yet - shadow map pass will change them
+    // We'll bind them after the shadow pass completes
     
     // Set pipeline state
     m_commandList->SetGraphicsRootSignature(m_rootSignature.Get());
@@ -1342,6 +1500,40 @@ void GraphicsEngine::PopulateCommandList(Engine::Rendering::BaseCameraController
     );
     
     // Set primitive topology
+    m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    
+    // SHADOW MAP PASS: DISABLED - causes DXGI_ERROR_DEVICE_REMOVED (GPU crash)
+    // The shadow map implementation has a fundamental issue causing GPU device removal
+    // TODO: Debug shadow map PSO and resource barriers
+    // UpdateShadowMapConstantBuffer();
+    // RenderShadowMap();
+    
+    // CRITICAL: Reset ALL state after shadow pass
+    // The shadow pass leaves the GPU in a different state that breaks main scene rendering
+    
+    // Reset viewport, scissor, and render targets for main scene
+    D3D12_VIEWPORT mainViewport = { 0.0f, 0.0f, (float)m_width, (float)m_height, 0.0f, 1.0f };
+    m_commandList->RSSetViewports(1, &mainViewport);
+    
+    D3D12_RECT mainScissorRect = { 0, 0, (LONG)m_width, (LONG)m_height };
+    m_commandList->RSSetScissorRects(1, &mainScissorRect);
+    
+    // NOW bind render targets for main scene (after shadow pass)
+    CD3DX12_CPU_DESCRIPTOR_HANDLE dsvHandle(
+        m_dsvHeap->GetCPUDescriptorHandleForHeapStart()
+    );
+    m_commandList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
+    
+    // Reset PSO, root signature, and primitive topology to main scene state
+    m_commandList->SetGraphicsRootSignature(m_rootSignature.Get());
+    if (m_wireframeMode && m_wireframePipelineState)
+    {
+        m_commandList->SetPipelineState(m_wireframePipelineState.Get());
+    }
+    else
+    {
+        m_commandList->SetPipelineState(m_pipelineState.Get());
+    }
     m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     
     // Render sky dome FIRST (background - doesn't write depth)
@@ -1381,6 +1573,12 @@ void GraphicsEngine::PopulateCommandList(Engine::Rendering::BaseCameraController
             std::cout << "[DEBUG] NO CREATURES TO RENDER!" << std::endl;
             printed = true;
         }
+    }
+    
+    // Render ImGui UI (BEFORE closing command list)
+    if (m_imguiRenderer)
+    {
+        m_imguiRenderer->RenderDrawData(m_commandList.Get());
     }
     
     // Close command list
@@ -1536,6 +1734,17 @@ void GraphicsEngine::RenderCreatures(const std::vector<CreatureMeshData>& creatu
         m_commandList->SetGraphicsRootConstantBufferView(3, cameraPosBuffer->GetGPUVirtualAddress());
     }
     
+    // Bind shadow map constant buffer (b4)
+    m_commandList->SetGraphicsRootConstantBufferView(4, m_shadowMapConstantBuffer->GetGPUVirtualAddress());
+    
+    // Bind shadow map SRV (t0) - root parameter 5 is descriptor table
+    ID3D12DescriptorHeap* pShadowHeap = m_shadowMapSrvHeap.Get();
+    m_commandList->SetDescriptorHeaps(1, &pShadowHeap);
+    m_commandList->SetGraphicsRootDescriptorTable(
+        5,
+        m_shadowMapSrvHeap->GetGPUDescriptorHandleForHeapStart()
+    );
+    
     // Render each creature mesh
     for (size_t i = 0; i < creatures.size(); ++i)
     {
@@ -1679,6 +1888,13 @@ bool GraphicsEngine::InitializePBRSystem()
         return false;
     }
     
+    // Create shadow map PSO
+    if (!CreateShadowMapPipelineState())
+    {
+        std::cerr << "  WARNING: Failed to create shadow map PSO - shadows will be disabled" << std::endl;
+        // Don't return false - allow engine to continue without shadows
+    }
+    
     // Step 6: Initialize UI button
     InitializeUIButton();
     
@@ -1757,8 +1973,11 @@ bool GraphicsEngine::CreatePBRRootSignature()
     // b1: Material constants (PS)
     // b2: Light constants (PS)
     // b3: Camera position (PS)
+    // b4: Shadow map matrices (PS)
+    // t0: Shadow map texture (PS) - descriptor table
+    // s0: Shadow sampler (PS) - static sampler
     
-    D3D12_ROOT_PARAMETER rootParams[4] = {};
+    D3D12_ROOT_PARAMETER rootParams[6] = {};
     
     // b0: View/Projection (Vertex Shader)
     rootParams[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
@@ -1768,27 +1987,65 @@ bool GraphicsEngine::CreatePBRRootSignature()
     
     // b1: Material (Pixel Shader)
     rootParams[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-    rootParams[1].Descriptor.ShaderRegister = 1;
+    rootParams[1].Descriptor.ShaderRegister = 1;  // Matches shader's register(b1)
     rootParams[1].Descriptor.RegisterSpace = 0;
     rootParams[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
     
     // b2: Lights (Pixel Shader)
     rootParams[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-    rootParams[2].Descriptor.ShaderRegister = 2;
+    rootParams[2].Descriptor.ShaderRegister = 2;  // Matches shader's register(b2)
     rootParams[2].Descriptor.RegisterSpace = 0;
     rootParams[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
     
     // b3: Camera (Pixel Shader)
     rootParams[3].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-    rootParams[3].Descriptor.ShaderRegister = 3;
+    rootParams[3].Descriptor.ShaderRegister = 3;  // Matches shader's register(b3)
     rootParams[3].Descriptor.RegisterSpace = 0;
     rootParams[3].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
     
+    // b4: Shadow matrices (Pixel Shader)
+    rootParams[4].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+    rootParams[4].Descriptor.ShaderRegister = 4;  // Matches shader's register(b4)
+    rootParams[4].Descriptor.RegisterSpace = 0;
+    rootParams[4].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+    
+    // t0: Shadow map SRV (Pixel Shader) - descriptor table
+    rootParams[5].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+    
+    // CRITICAL: Descriptor range must persist for lifetime of root signature
+    // Use static storage to avoid dangling pointer
+    static D3D12_DESCRIPTOR_RANGE srvRange = {};
+    srvRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+    srvRange.NumDescriptors = 1;
+    srvRange.BaseShaderRegister = 0;
+    srvRange.RegisterSpace = 0;
+    srvRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+    
+    rootParams[5].DescriptorTable.NumDescriptorRanges = 1;
+    rootParams[5].DescriptorTable.pDescriptorRanges = &srvRange;
+    rootParams[5].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+    
+    // Static sampler for shadow map (comparison sampler for PCF)
+    D3D12_STATIC_SAMPLER_DESC shadowSampler = {};
+    shadowSampler.Filter = D3D12_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT;
+    shadowSampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+    shadowSampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+    shadowSampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+    shadowSampler.MipLODBias = 0.0f;
+    shadowSampler.MaxAnisotropy = 0;
+    shadowSampler.ComparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+    shadowSampler.BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE;
+    shadowSampler.MinLOD = 0.0f;
+    shadowSampler.MaxLOD = D3D12_FLOAT32_MAX;
+    shadowSampler.ShaderRegister = 0;
+    shadowSampler.RegisterSpace = 0;
+    shadowSampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+    
     D3D12_ROOT_SIGNATURE_DESC rootDesc = {};
-    rootDesc.NumParameters = 4;
+    rootDesc.NumParameters = 6;  // b0-b4 CBVs + 1 descriptor table
     rootDesc.pParameters = rootParams;
-    rootDesc.NumStaticSamplers = 0;
-    rootDesc.pStaticSamplers = nullptr;
+    rootDesc.NumStaticSamplers = 1;
+    rootDesc.pStaticSamplers = &shadowSampler;
     rootDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
     
     Microsoft::WRL::ComPtr<ID3DBlob> signature;
@@ -1830,6 +2087,7 @@ bool GraphicsEngine::CreatePBRPipelineState()
     std::cout << "  Creating PBR pipeline state object..." << std::endl;
     
     // Define input layout for PBR (position, normal, color)
+    // NOTE: Creature meshes use COLOR (float4), not TEXCOORD (float2)
     D3D12_INPUT_ELEMENT_DESC inputLayout[] =
     {
         { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, 
@@ -1888,6 +2146,14 @@ bool GraphicsEngine::CreatePBRPipelineState()
     psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
     psoDesc.SampleDesc = { 1, 0 };
     
+    // Enable D3D12 debug layer for detailed validation messages
+    Microsoft::WRL::ComPtr<ID3D12InfoQueue> infoQueue;
+    if (SUCCEEDED(m_device->QueryInterface(IID_PPV_ARGS(&infoQueue))))
+    {
+        infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, TRUE);
+        infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, TRUE);
+    }
+    
     ThrowIfFailed(
         m_device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_pbrPipelineState)),
         "Create PBR PipelineState failed"
@@ -1902,6 +2168,7 @@ bool GraphicsEngine::CreatePBRWireframePipelineState()
     std::cout << "  Creating PBR wireframe pipeline state object..." << std::endl;
     
     // Define input layout for PBR (position, normal, color)
+    // NOTE: Creature meshes use COLOR (float4), not TEXCOORD (float2)
     D3D12_INPUT_ELEMENT_DESC inputLayout[] =
     {
         { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, 
@@ -2252,12 +2519,20 @@ bool GraphicsEngine::CreateSkyDomePipelineState()
         compileFlags,
         0,
         &m_skyDomeVertexShaderBlob,
-        nullptr
+        &errorBlob  // Changed from nullptr to capture errors
     );
     
     if (FAILED(hr))
     {
-        std::cerr << "Failed to compile sky dome vertex shader" << std::endl;
+        if (errorBlob)
+        {
+            std::cerr << "Sky dome vertex shader compilation error: " << (char*)errorBlob->GetBufferPointer() << std::endl;
+            errorBlob->Release();
+        }
+        else
+        {
+            std::cerr << "Failed to compile sky dome vertex shader (file not found or no error details)" << std::endl;
+        }
         return false;
     }
     
@@ -2353,6 +2628,106 @@ bool GraphicsEngine::CreateSkyDomePipelineState()
     return true;
 }
 
+bool GraphicsEngine::CreateShadowMapPipelineState()
+{
+    std::cout << "  Creating shadow map pipeline state..." << std::endl;
+    
+    // Compile shadow vertex shader
+    Microsoft::WRL::ComPtr<ID3DBlob> error;
+    UINT compileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
+    
+    HRESULT hr = D3DCompileFromFile(
+        L"ShadowVS.hlsl",
+        nullptr,
+        nullptr,
+        "main",
+        "vs_5_1",
+        compileFlags,
+        0,
+        &m_shadowVertexShaderBlob,
+        &error
+    );
+    
+    if (FAILED(hr))
+    {
+        if (error)
+        {
+            std::cerr << "Shadow vertex shader compilation error: " << (char*)error->GetBufferPointer() << std::endl;
+            error->Release();
+        }
+        return false;
+    }
+    
+    // Create root signature for shadow map - reuse basic PSO's root signature
+    m_shadowMapRootSignature = m_rootSignature;
+    
+    // Define input layout - MUST match ShadowVS.hlsl (POSITION, NORMAL, COLOR)
+    D3D12_INPUT_ELEMENT_DESC inputLayout[] =
+    {
+        { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,
+          D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        { "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12,
+          D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        { "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 24,
+          D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+    };
+    
+    // Create depth-only PSO
+    D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
+    psoDesc.InputLayout = { inputLayout, _countof(inputLayout) };
+    psoDesc.pRootSignature = m_shadowMapRootSignature.Get();
+    psoDesc.VS = { m_shadowVertexShaderBlob->GetBufferPointer(), m_shadowVertexShaderBlob->GetBufferSize() };
+    psoDesc.PS = {};  // No pixel shader - depth only
+    psoDesc.NodeMask = 0;  // Single GPU
+    
+    // Rasterizer state
+    psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
+    psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_BACK;  // Standard backface culling
+    psoDesc.RasterizerState.FrontCounterClockwise = FALSE;
+    psoDesc.RasterizerState.DepthClipEnable = TRUE;
+    
+    // Depth state - write depth for shadow map
+    psoDesc.DepthStencilState.DepthEnable = TRUE;
+    psoDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
+    psoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
+    psoDesc.DepthStencilState.StencilEnable = FALSE;
+    psoDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
+    
+    // Blend state - initialize even though we have 0 render targets
+    D3D12_RENDER_TARGET_BLEND_DESC rtBlendDesc = {};
+    rtBlendDesc.BlendEnable = FALSE;
+    rtBlendDesc.LogicOpEnable = FALSE;
+    rtBlendDesc.SrcBlend = D3D12_BLEND_ONE;
+    rtBlendDesc.DestBlend = D3D12_BLEND_ZERO;
+    rtBlendDesc.BlendOp = D3D12_BLEND_OP_ADD;
+    rtBlendDesc.SrcBlendAlpha = D3D12_BLEND_ONE;
+    rtBlendDesc.DestBlendAlpha = D3D12_BLEND_ZERO;
+    rtBlendDesc.BlendOpAlpha = D3D12_BLEND_OP_ADD;
+    rtBlendDesc.LogicOp = D3D12_LOGIC_OP_NOOP;
+    rtBlendDesc.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+    psoDesc.BlendState.RenderTarget[0] = rtBlendDesc;
+    
+    // No render targets (depth only)
+    psoDesc.NumRenderTargets = 0;
+    psoDesc.RTVFormats[0] = DXGI_FORMAT_UNKNOWN;
+    psoDesc.SampleDesc = { 1, 0 };
+    psoDesc.SampleMask = UINT_MAX;
+    psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+    
+    hr = m_device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_shadowMapPipelineState));
+    if (FAILED(hr))
+    {
+        std::cerr << "Failed to create shadow map pipeline state (HRESULT: 0x" << std::hex << hr << std::dec << ")" << std::endl;
+        std::cerr << "  Input elements: " << psoDesc.InputLayout.NumElements << std::endl;
+        std::cerr << "  NumRenderTargets: " << psoDesc.NumRenderTargets << std::endl;
+        std::cerr << "  DSVFormat: " << psoDesc.DSVFormat << std::endl;
+        return false;
+    }
+    
+    std::cout << "  Shadow map pipeline state created successfully" << std::endl;
+    return true;
+}
+
 void GraphicsEngine::UpdateLightingFromTOD()
 {
     // Calculate sun direction from angle
@@ -2438,6 +2813,94 @@ void GraphicsEngine::RenderSkyDome()
     
     // Draw sky dome
     m_commandList->DrawIndexedInstanced(m_skyDomeIndexCount, 1, 0, 0, 0);
+}
+
+void GraphicsEngine::UpdateShadowMapConstantBuffer()
+{
+    // Calculate light view matrix (looking from sun direction towards origin)
+    DirectX::XMFLOAT3 sunPos = {
+        -m_lightData.sunDirection.x * 50.0f,
+        -m_lightData.sunDirection.y * 50.0f,
+        -m_lightData.sunDirection.z * 50.0f
+    };
+    DirectX::XMFLOAT3 lookAt = { 0.0f, 0.0f, 0.0f };
+    DirectX::XMFLOAT3 up = { 0.0f, 1.0f, 0.0f };
+    
+    DirectX::XMMATRIX lightView = DirectX::XMMatrixLookAtLH(
+        DirectX::XMLoadFloat3(&sunPos),
+        DirectX::XMLoadFloat3(&lookAt),
+        DirectX::XMLoadFloat3(&up)
+    );
+    
+    // Orthographic projection for shadow map (covers 50x50 area)
+    DirectX::XMMATRIX lightProj = DirectX::XMMatrixOrthographicLH(50.0f, 50.0f, 1.0f, 100.0f);
+    
+    // Transpose matrices for HLSL (row-major)
+    lightView = DirectX::XMMatrixTranspose(lightView);
+    lightProj = DirectX::XMMatrixTranspose(lightProj);
+    
+    // Copy to constant buffer
+    DirectX::XMStoreFloat4x4(reinterpret_cast<DirectX::XMFLOAT4X4*>(&m_shadowCBVData[0]), lightView);
+    DirectX::XMStoreFloat4x4(reinterpret_cast<DirectX::XMFLOAT4X4*>(&m_shadowCBVData[64]), lightProj);
+}
+
+void GraphicsEngine::RenderShadowMap()
+{
+    if (!m_shadowMapPipelineState || !m_shadowMapTexture) return;
+    
+    // Transition shadow map from its current state to depth write
+    D3D12_RESOURCE_BARRIER barrier = {};
+    barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+    barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+    barrier.Transition.pResource = m_shadowMapTexture.Get();
+    barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+    barrier.Transition.StateBefore = m_shadowMapState;  // Use tracked state
+    barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_DEPTH_WRITE;
+    m_commandList->ResourceBarrier(1, &barrier);
+    m_shadowMapState = D3D12_RESOURCE_STATE_DEPTH_WRITE;  // Update tracked state
+    
+    // Clear shadow map (use shadow map's own DSV, NOT the main scene's)
+    CD3DX12_CPU_DESCRIPTOR_HANDLE shadowDSV(m_shadowMapDsvHeap->GetCPUDescriptorHandleForHeapStart());
+    m_commandList->ClearDepthStencilView(
+        shadowDSV,
+        D3D12_CLEAR_FLAG_DEPTH,
+        1.0f,
+        0,
+        0,
+        nullptr
+    );
+    
+    // Set shadow map as depth buffer (use shadow map's own DSV)
+    m_commandList->OMSetRenderTargets(0, nullptr, FALSE, &shadowDSV);
+    
+    // Set viewport for shadow map
+    D3D12_VIEWPORT shadowViewport = { 0.0f, 0.0f, (float)ShadowMapSize, (float)ShadowMapSize, 0.0f, 1.0f };
+    m_commandList->RSSetViewports(1, &shadowViewport);
+    
+    // Set shadow map PSO and root signature
+    m_commandList->SetPipelineState(m_shadowMapPipelineState.Get());
+    m_commandList->SetGraphicsRootSignature(m_shadowMapRootSignature.Get());
+    
+    // Bind shadow map constant buffer
+    m_commandList->SetGraphicsRootConstantBufferView(
+        0,
+        m_shadowMapConstantBuffer->GetGPUVirtualAddress()
+    );
+    
+    // Draw ground plane into shadow map
+    m_commandList->IASetVertexBuffers(0, 1, &m_groundVertexBufferView);
+    m_commandList->IASetIndexBuffer(&m_groundIndexBufferView);
+    m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    m_commandList->DrawIndexedInstanced(m_groundIndexCount, 1, 0, 0, 0);
+    
+    // Draw creatures into shadow map (simplified - just position)
+    // Note: Would need to iterate through genetics integration and draw creature meshes
+    
+    // Transition shadow map back to shader resource
+    barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_DEPTH_WRITE;
+    barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+    m_commandList->ResourceBarrier(1, &barrier);
+    m_shadowMapState = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;  // Update tracked state
 }
 
 

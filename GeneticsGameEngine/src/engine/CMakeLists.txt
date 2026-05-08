@@ -79,3 +79,6 @@ add_subdirectory(procedural)
 
 # Add neural network subdirectory
 add_subdirectory(neural)
+
+# Add UI subdirectory
+add_subdirectory(ui)

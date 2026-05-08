@@ -1,7 +1,9 @@
 #include "Window.h"
 #include "../engine/rendering/camera/CameraController.h"
 #include "../engine/rendering/camera/OrbitCameraController.h"
+#include "../engine/ui/ImGuiRenderer.h"
 #include "../graphics/GraphicsEngine.h"
+#include "../../third_party/imgui/imgui.h"
 #include <string>
 #include <iostream>
 #include <algorithm>
@@ -35,19 +37,19 @@ void Window::ProcessKeyboardInput(float deltaTime)
     float moveSpeed = 10.0f * deltaTime;  // Units per second
     
     if (m_keyW) {
-        std::cout << "[INPUT] W pressed - calling MoveForward(" << moveSpeed << ")" << std::endl;
+        // std::cout << "[INPUT] W pressed - calling MoveForward(" << moveSpeed << ")" << std::endl;
         m_camera->MoveForward(moveSpeed);
     }
     if (m_keyS) {
-        std::cout << "[INPUT] S pressed - moving backward " << moveSpeed << " units" << std::endl;
+        // std::cout << "[INPUT] S pressed - moving backward " << moveSpeed << " units" << std::endl;
         m_camera->MoveForward(-moveSpeed);
     }
     if (m_keyA) {
-        std::cout << "[INPUT] A pressed - moving left " << moveSpeed << " units" << std::endl;
+        // std::cout << "[INPUT] A pressed - moving left " << moveSpeed << " units" << std::endl;
         m_camera->MoveRight(-moveSpeed);
     }
     if (m_keyD) {
-        std::cout << "[INPUT] D pressed - moving right " << moveSpeed << " units" << std::endl;
+        // std::cout << "[INPUT] D pressed - moving right " << moveSpeed << " units" << std::endl;
         m_camera->MoveRight(moveSpeed);
     }
 }
@@ -105,6 +107,12 @@ bool Window::Initialize(int width, int height, LPCWSTR title)
 
 LRESULT Window::HandleMessage(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
+    // Forward to ImGui first
+    if (ImGuiRenderer::MsgProc(hWnd, message, wParam, lParam))
+    {
+        return true;
+    }
+    
     switch (message)
     {
         case WM_DESTROY:
@@ -121,6 +129,13 @@ LRESULT Window::HandleMessage(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPa
             {
                 int x = GET_X_LPARAM(lParam);
                 int y = GET_Y_LPARAM(lParam);
+                
+                // Check if ImGui wants to capture mouse input
+                if (ImGui::GetIO().WantCaptureMouse)
+                {
+                    // Don't capture mouse for camera - let ImGui handle it
+                    break;
+                }
                 
                 // Forward to graphics engine for UI button click
                 if (m_graphicsEngine)
@@ -177,6 +192,15 @@ LRESULT Window::HandleMessage(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPa
             {
                 int x = GET_X_LPARAM(lParam);
                 int y = GET_Y_LPARAM(lParam);
+                
+                // Check if ImGui wants to capture mouse input
+                if (ImGui::GetIO().WantCaptureMouse)
+                {
+                    // Don't rotate camera - let ImGui handle mouse
+                    m_lastMouseX = x;
+                    m_lastMouseY = y;
+                    break;
+                }
                 
                 // Forward to graphics engine for UI button hover detection
                 if (m_graphicsEngine)

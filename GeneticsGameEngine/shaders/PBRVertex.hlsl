@@ -12,7 +12,7 @@ struct VSInput
 {
     float3 position : POSITION;
     float3 normal : NORMAL;
-    float2 texCoord : TEXCOORD;
+    float4 color : COLOR;
 };
 
 struct PSInput
@@ -20,7 +20,7 @@ struct PSInput
     float4 position : SV_POSITION;
     float3 worldPos : WORLDPOS;
     float3 normal : NORMAL;
-    float2 texCoord : TEXCOORD;
+    float4 color : COLOR;
 };
 
 PSInput main(VSInput input)
@@ -36,7 +36,7 @@ PSInput main(VSInput input)
     
     // Transform normal (identity world matrix, so no transformation needed)
     output.normal = input.normal;
-    output.texCoord = input.texCoord;
+    output.color = input.color;
     
     return output;
 }

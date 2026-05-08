@@ -20,6 +20,17 @@ cbuffer CameraPosition : register(b3)
     float pad1;
 };
 
+// Shadow map constants (light matrices)
+cbuffer ShadowConstants : register(b4)
+{
+    float4x4 lightViewMatrix;
+    float4x4 lightProjMatrix;
+};
+
+// Shadow map texture and sampler
+Texture2D shadowMap : register(t0);
+SamplerComparisonState shadowSampler : register(s0);
+
 struct PS_INPUT
 {
     float4 position : SV_POSITION;
@@ -63,6 +74,51 @@ float GeometrySmith(float3 N, float3 V, float3 L, float roughness)
     return ggx1 * ggx2;
 }
 
+// Calculate shadow factor using PCF (Percentage Closer Filtering)
+float CalculateShadow(float3 worldPos)
+{
+    // Transform world position to light's clip space
+    float4 worldPos4 = float4(worldPos, 1.0);
+    float4 lightViewPos = mul(lightViewMatrix, worldPos4);
+    float4 lightClipPos = mul(lightProjMatrix, lightViewPos);
+    
+    // Perform perspective divide
+    float3 lightNDC = lightClipPos.xyz / lightClipPos.w;
+    
+    // Check if pixel is in light's view
+    if (lightNDC.x < -1.0 || lightNDC.x > 1.0 ||
+        lightNDC.y < -1.0 || lightNDC.y > 1.0 ||
+        lightNDC.z < 0.0 || lightNDC.z > 1.0)
+    {
+        return 1.0; // Outside light's view, no shadow
+    }
+    
+    // Convert to texture coordinates
+    float2 shadowTexCoords = lightNDC.xy * 0.5 + 0.5;
+    shadowTexCoords.y = 1.0 - shadowTexCoords.y; // Flip Y for texture coords
+    
+    // Current depth from light's perspective
+    float currentDepth = lightNDC.z;
+    
+    // PCF sampling (3x3 filter for soft shadows)
+    float shadow = 0.0;
+    float bias = 0.005; // Small bias to prevent acne
+    float texelSize = 1.0 / 2048.0;
+    
+    for (int x = -1; x <= 1; ++x)
+    {
+        for (int y = -1; y <= 1; ++y)
+        {
+            float2 sampleCoords = shadowTexCoords + float2(x, y) * texelSize;
+            float pcfDepth = shadowMap.SampleCmp(shadowSampler, sampleCoords, currentDepth - bias);
+            shadow += pcfDepth;
+        }
+    }
+    shadow /= 9.0;
+    
+    return shadow;
+}
+
 float4 main(PS_INPUT input) : SV_TARGET
 {
     float3 N = normalize(input.worldNormal);
@@ -90,6 +146,9 @@ float4 main(PS_INPUT input) : SV_TARGET
     
     if (NdotL > 0.0)
     {
+        // Calculate shadow factor
+        float shadow = CalculateShadow(input.worldPosition);
+        
         // Cook-Torrance BRDF
         float NDF = DistributionGGX(N, H, roughness);
         float G = GeometrySmith(N, V, L, roughness);
@@ -105,8 +164,8 @@ float4 main(PS_INPUT input) : SV_TARGET
         float3 kD = float3(1.0, 1.0, 1.0) - kS;
         kD *= 1.0 - metallic;
         
-        // Radiance equation
-        Lo += (kD * baseColor / 3.14159265 + specular) * sunColor * sunIntensity * NdotL;
+        // Radiance equation (apply shadow)
+        Lo += (kD * baseColor / 3.14159265 + specular) * sunColor * sunIntensity * NdotL * shadow;
     }
     
     // Ground ambient (bounce light)

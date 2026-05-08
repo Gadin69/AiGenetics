@@ -44,6 +44,8 @@ endif()
 # Include directories
 target_include_directories(GraphicsEngine PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/third_party/imgui
+    ${CMAKE_SOURCE_DIR}/third_party/imgui/backends
 )
 
 # Link procedural library

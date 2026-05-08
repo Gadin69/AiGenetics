@@ -32,7 +32,7 @@ struct PSInput
     float4 position : SV_POSITION;
     float3 worldPos : WORLDPOS;
     float3 normal : NORMAL;
-    float2 texCoord : TEXCOORD;
+    float4 color : COLOR;
 };
 
 float4 main(PSInput input) : SV_TARGET
@@ -40,56 +40,33 @@ float4 main(PSInput input) : SV_TARGET
     float3 N = normalize(input.normal);
     float3 V = normalize(cameraPosition - input.worldPos);
     
+    // Use vertex color as the base albedo
+    float3 albedo = input.color.rgb;
+    
     // Ambient lighting
-    float3 ambient = ambientColor * material.albedo * material.ambientOcclusion;
+    float3 ambientColor = float3(0.3, 0.5, 0.9);
+    float ambientIntensity = 0.3;
+    float3 ambient = ambientColor * albedo * ambientIntensity;
     
-    // Calculate shadow factor
-    float shadowFactor = 1.0;
-    if (shadowEnabled > 0.5)
-    {
-        // Transform world position to light's clip space
-        float4 worldPos = float4(input.worldPos, 1.0);
-        float4 lightViewPos = mul(worldPos, lightViewMatrix);
-        float4 lightClipPos = mul(lightViewPos, lightProjMatrix);
-        
-        // Normalize to [0, 1] range
-        float3 shadowCoord = lightClipPos.xyz / lightClipPos.w;
-        shadowCoord.xy = shadowCoord.xy * 0.5 + 0.5;
-        shadowCoord.y = 1.0 - shadowCoord.y;  // Flip Y for texture coordinates
-        
-        // Sample shadow map
-        if (shadowCoord.x >= 0.0 && shadowCoord.x <= 1.0 &&
-            shadowCoord.y >= 0.0 && shadowCoord.y <= 1.0 &&
-            shadowCoord.z >= 0.0 && shadowCoord.z <= 1.0)
-        {
-            float closestDepth = shadowMap.SampleCmpLevelZero(
-                shadowSampler,
-                shadowCoord.xy,
-                shadowCoord.z - 0.005  // Small bias to prevent shadow acne
-            );
-            shadowFactor = closestDepth;
-        }
-    }
+    // Directional sun lighting
+    float3 sunDirection = normalize(float3(0.287348, -4.18679e-08, -0.957826));
+    float3 sunColor = float3(1.0, 0.95, 0.8);
+    float sunIntensity = 1.5;
     
-    // Calculate lighting from all lights
-    float3 finalColor = ambient;
+    // Calculate diffuse (Lambertian)
+    float NdotL = max(dot(N, -sunDirection), 0.0);
+    float3 diffuse = albedo * sunColor * sunIntensity * NdotL;
     
-    for (int i = 0; i < lightCount && i < MAX_LIGHTS; i++)
-    {
-        float3 lightContrib = CalculateLighting(input.worldPos, N, material, lights[i], V);
-        finalColor += lightContrib * shadowFactor;  // Apply shadow to direct lighting
-    }
+    // Simple specular (Blinn-Phong)
+    float3 H = normalize(-sunDirection + V);
+    float NdotH = max(dot(N, H), 0.0);
+    float specularIntensity = pow(NdotH, 32.0) * 0.5; // 32 = shininess, 0.5 = specular strength
+    float3 specular = sunColor * specularIntensity;
     
-    // Add emissive
-    finalColor += material.emissive * material.emissiveIntensity;
+    // Combine lighting
+    float3 finalColor = ambient + diffuse + specular;
     
-    // Apply exposure
-    finalColor *= exposure;
-    
-    // Apply ACES Filmic tone mapping
-    finalColor = ACESFilmicToneMapping(finalColor);
-    
-    // Gamma correction
+    // Apply gamma correction
     finalColor = pow(finalColor, float3(1.0 / 2.2, 1.0 / 2.2, 1.0 / 2.2));
     
     return float4(finalColor, 1.0);
