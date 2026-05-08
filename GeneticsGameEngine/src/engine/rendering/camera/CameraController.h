@@ -123,7 +123,7 @@ public:
         m_matricesDirty = true;
     }
     
-    void SetWindowSize(float width, float height) {
+    void SetWindowSize(float width, float height) override {
         m_windowSize = DirectX::XMFLOAT2(width, height);
         m_matricesDirty = true;
     }

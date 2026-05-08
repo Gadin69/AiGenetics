@@ -95,6 +95,9 @@ public:
     ID3D12Device* GetDevice() const { return m_device.Get(); }
     ID3D12GraphicsCommandList* GetCommandList() const { return m_commandList.Get(); }
     
+    // Set window pointer for window management
+    void SetWindow(class Window* window) { m_window = window; }
+    
     // Wireframe toggle
     void ToggleWireframe() { m_wireframeMode = !m_wireframeMode; }
     bool IsWireframeMode() const { return m_wireframeMode; }
@@ -105,6 +108,13 @@ public:
     
     // Application quit
     void Quit();
+    
+    // Window management
+    void ToggleFullscreen();
+    bool IsFullscreen() const;
+    void Resize(UINT width, UINT height);
+    void RequestResize(UINT width, UINT height); // Safe resize request (deferred to next frame)
+    void ProcessPendingResize(Engine::Rendering::BaseCameraController* camera); // Called after WaitForPreviousFrame
     
     // Mouse input handling for UI
     void OnMouseMove(int x, int y);
@@ -250,6 +260,15 @@ private:
     HWND m_hWnd = nullptr;
     UINT m_width = 800;
     UINT m_height = 600;
+    
+    // Deferred resize (to avoid resizing mid-frame)
+    bool m_resizePending = false;
+    UINT m_pendingWidth = 0;
+    UINT m_pendingHeight = 0;
+    bool m_skipCurrentFrame = false; // Skip rendering on frame after resize
+    
+    // Window pointer for window management
+    class Window* m_window = nullptr;
     
     // ImGui renderer
     std::unique_ptr<ImGuiRenderer> m_imguiRenderer;

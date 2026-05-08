@@ -25,6 +25,9 @@ public:
 
     // Set quit callback
     void SetQuitCallback(std::function<void()> callback) { m_quitCallback = callback; }
+    
+    // Set fullscreen callback
+    void SetFullscreenCallback(std::function<void()> callback) { m_fullscreenCallback = callback; }
 
     // Panel visibility getters/setters
     bool IsControlPanelVisible() const { return m_showControlPanel; }
@@ -38,6 +41,9 @@ public:
     
     bool IsDebugPanelVisible() const { return m_showDebugPanel; }
     void SetDebugPanelVisible(bool visible) { m_showDebugPanel = visible; }
+    
+    bool IsGraphicsPanelVisible() const { return m_showGraphicsPanel; }
+    void SetGraphicsPanelVisible(bool visible) { m_showGraphicsPanel = visible; }
 
 private:
     // Panel visibility toggles
@@ -45,14 +51,19 @@ private:
     bool m_showDemoWindow = false;
     bool m_showCreaturePanel = false;
     bool m_showDebugPanel = false;
+    bool m_showGraphicsPanel = false;
     
     // Quit callback
     std::function<void()> m_quitCallback;
+    
+    // Fullscreen callback
+    std::function<void()> m_fullscreenCallback;
 
     // Individual panel renderers
     void RenderControlPanel(bool& wireframeMode);
     void RenderCreaturePanel(GeneticsIntegration* geneticsIntegration);
     void RenderDebugPanel(GeneticsIntegration* geneticsIntegration, int frameCount);
+    void RenderGraphicsPanel();
 };
 
 } // namespace UI

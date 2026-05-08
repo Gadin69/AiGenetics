@@ -38,11 +38,17 @@ private:
     bool m_keyA;
     bool m_keyS;
     bool m_keyD;
+    
+    // Window state
+    bool m_fullscreen;
+    RECT m_windowedRect; // Store windowed position for restoring
+    bool m_isResizing; // Prevent double-resize during fullscreen toggle
 
 public:
     Window(HINSTANCE hInstance) : m_hInstance(hInstance), m_hWnd(nullptr), m_width(0), m_height(0), m_title(nullptr), 
                                    m_camera(nullptr), m_graphicsEngine(nullptr), m_mouseCaptured(false), m_lastMouseX(0), m_lastMouseY(0),
-                                   m_keyW(false), m_keyA(false), m_keyS(false), m_keyD(false) {}
+                                   m_keyW(false), m_keyA(false), m_keyS(false), m_keyD(false),
+                                   m_fullscreen(false), m_windowedRect{0, 0, 0, 0}, m_isResizing(false) {}
     
     bool Initialize(int width, int height, LPCWSTR title);
     HWND GetHwnd() const { return m_hWnd; }
@@ -51,6 +57,11 @@ public:
     void SetCamera(Engine::Rendering::BaseCameraController* camera) { m_camera = camera; }
     void SetGraphicsEngine(GraphicsEngine* engine) { m_graphicsEngine = engine; }
     void ProcessKeyboardInput(float deltaTime);
+    
+    // Window management
+    void ToggleFullscreen();
+    bool IsFullscreen() const { return m_fullscreen; }
+    void Resize(int width, int height);
     
 private:
     static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);

@@ -27,6 +27,7 @@ public:
     virtual void SetFOV(float fov) = 0;
     virtual void SetNearPlane(float nearPlane) = 0;
     virtual void SetFarPlane(float farPlane) = 0;
+    virtual void SetWindowSize(float width, float height) = 0;
     
     // Utility methods
     virtual DirectX::XMFLOAT3 GetForwardVector() const = 0;

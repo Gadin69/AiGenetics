@@ -162,6 +162,9 @@ bool Application::Initialize()
     std::cout << "Graphics engine initialized successfully." << std::endl;
     std::cout.flush();
     
+    // Set window pointer in graphics engine for window management
+    m_graphicsEngine->SetWindow(m_window.get());
+    
     // Set graphics engine pointer in window for input handling
     m_window->SetGraphicsEngine(m_graphicsEngine.get());
     

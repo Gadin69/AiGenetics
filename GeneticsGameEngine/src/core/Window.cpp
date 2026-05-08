@@ -121,8 +121,16 @@ LRESULT Window::HandleMessage(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPa
             return 0;
         
         case WM_SIZE:
+            // ONLY store the new dimensions - do NOT call any DirectX functions here
+            // This follows Microsoft's official D3D12 samples and ImGui recommendations
             m_width = LOWORD(lParam);
             m_height = HIWORD(lParam);
+            
+            // Request resize (will be processed at start of next frame)
+            if (m_graphicsEngine && m_width > 0 && m_height > 0)
+            {
+                m_graphicsEngine->RequestResize(m_width, m_height);
+            }
             break;
         
         case WM_LBUTTONDOWN:
@@ -298,4 +306,67 @@ LRESULT Window::HandleMessage(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPa
     }
     
     return DefWindowProc(hWnd, message, wParam, lParam);
+}
+
+// Toggle fullscreen mode
+void Window::ToggleFullscreen()
+{
+    if (!m_hWnd) return;
+    
+    if (m_fullscreen)
+    {
+        // Restore windowed mode
+        SetWindowLong(m_hWnd, GWL_STYLE, WS_OVERLAPPEDWINDOW);
+        SetWindowPos(m_hWnd, nullptr, 
+                    m_windowedRect.left, 
+                    m_windowedRect.top, 
+                    m_windowedRect.right - m_windowedRect.left, 
+                    m_windowedRect.bottom - m_windowedRect.top,
+                    SWP_NOZORDER | SWP_FRAMECHANGED);
+        m_fullscreen = false;
+    }
+    else
+    {
+        // Save current windowed position
+        GetWindowRect(m_hWnd, &m_windowedRect);
+        
+        // Get monitor dimensions
+        HMONITOR hMonitor = MonitorFromWindow(m_hWnd, MONITOR_DEFAULTTONEAREST);
+        MONITORINFO monitorInfo = { sizeof(monitorInfo) };
+        GetMonitorInfo(hMonitor, &monitorInfo);
+        
+        // Switch to fullscreen
+        SetWindowLong(m_hWnd, GWL_STYLE, WS_POPUP);
+        SetWindowPos(m_hWnd, HWND_TOP,
+                    monitorInfo.rcMonitor.left,
+                    monitorInfo.rcMonitor.top,
+                    monitorInfo.rcMonitor.right - monitorInfo.rcMonitor.left,
+                    monitorInfo.rcMonitor.bottom - monitorInfo.rcMonitor.top,
+                    SWP_NOZORDER | SWP_FRAMECHANGED);
+        m_fullscreen = true;
+    }
+    
+    // Don't call Resize here - let WM_SIZE handle it naturally
+    // This prevents double-resize issues
+    
+    // Update camera aspect ratio
+    if (m_camera)
+    {
+        m_camera->SetWindowSize((float)m_width, (float)m_height);
+    }
+}
+
+// Resize window
+void Window::Resize(int width, int height)
+{
+    if (!m_hWnd || m_fullscreen) return;
+    
+    // Calculate window rect to get desired client size
+    RECT rect = { 0, 0, width, height };
+    AdjustWindowRect(&rect, WS_OVERLAPPEDWINDOW, FALSE);
+    
+    SetWindowPos(m_hWnd, nullptr, 0, 0,
+                rect.right - rect.left,
+                rect.bottom - rect.top,
+                SWP_NOZORDER | SWP_NOMOVE | SWP_FRAMECHANGED);
 }

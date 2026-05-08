@@ -1,8 +1,10 @@
 #include "GraphicsEngine.h"
+#include "../core/Window.h"
 #include "../engine/rendering/camera/CameraController.h"
 #include "../engine/ui/ImGuiRenderer.h"
 #include "../engine/ui/panels/UIManager.h"
 #include "../genetics/GeneticsIntegration.h"
+#include "../../third_party/imgui/imgui.h"
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -120,6 +122,11 @@ GraphicsEngine::GraphicsEngine()
     // Set up quit callback
     m_uiManager->SetQuitCallback([this]() {
         this->Quit();
+    });
+    
+    // Set up fullscreen callback
+    m_uiManager->SetFullscreenCallback([this]() {
+        this->ToggleFullscreen();
     });
 }
 
@@ -339,6 +346,20 @@ void GraphicsEngine::Render(std::unique_ptr<GeneticsIntegration>& geneticsIntegr
             std::cout.flush();
         }
         WaitForPreviousFrame();
+        
+        // Process any pending resize AFTER waiting for GPU, but BEFORE starting new ImGui frame
+        // This is the CORRECT place according to Microsoft D3D12 samples and ImGui documentation
+        ProcessPendingResize(camera);
+        
+        // If we just resized, skip this frame entirely
+        // The command allocator needs to be fresh for the next frame
+        if (m_skipCurrentFrame)
+        {
+            m_skipCurrentFrame = false;
+            // Still need to present to show the resized window
+            m_swapChain->Present(0, 0);
+            return;
+        }
         
         // Start new ImGui frame and render UI panels
         if (m_imguiRenderer && m_uiManager)
@@ -2943,5 +2964,205 @@ void GraphicsEngine::Quit()
     }
 }
 
+void GraphicsEngine::ToggleFullscreen()
+{
+    if (m_window)
+    {
+        m_window->ToggleFullscreen();
+    }
+}
+
+bool GraphicsEngine::IsFullscreen() const
+{
+    if (m_window)
+    {
+        return m_window->IsFullscreen();
+    }
+    return false;
+}
+
+void GraphicsEngine::Resize(UINT width, UINT height)
+{
+    if (!m_swapChain || width == 0 || height == 0) return;
+    
+    std::cout << "Resizing graphics engine from " << m_width << "x" << m_height 
+              << " to " << width << "x" << height << std::endl;
+    
+    // Print current fence state for debugging
+    std::cout << "  [DEBUG] Current fence values: ";
+    for (UINT i = 0; i < FrameCount; i++)
+    {
+        std::cout << "Frame[" << i << "]=" << m_fenceValues[i] << " ";
+    }
+    std::cout << "Completed=" << m_fence->GetCompletedValue() << std::endl;
+    
+    // CRITICAL: Wait for ALL frames in flight to complete before resizing
+    // We need to wait for the maximum fence value across all frame slots
+    UINT64 maxFenceValue = 0;
+    for (UINT i = 0; i < FrameCount; i++)
+    {
+        if (m_fenceValues[i] > maxFenceValue)
+        {
+            maxFenceValue = m_fenceValues[i];
+        }
+    }
+    
+    std::cout << "  [DEBUG] Waiting for max fence value: " << maxFenceValue << std::endl;
+    
+    // Wait for the GPU to reach the maximum fence value
+    if (m_fence->GetCompletedValue() < maxFenceValue)
+    {
+        HRESULT hr = m_fence->SetEventOnCompletion(maxFenceValue, m_fenceEvent);
+        if (FAILED(hr))
+        {
+            std::cerr << "Failed to set fence event: " << std::hex << hr << std::endl;
+            return;
+        }
+        
+        DWORD result = WaitForSingleObject(m_fenceEvent, 5000); // 5 second timeout
+        if (result == WAIT_TIMEOUT)
+        {
+            std::cerr << "WARNING: Timeout waiting for GPU to finish before resize" << std::endl;
+        }
+        else
+        {
+            std::cout << "  [DEBUG] Successfully waited for fence " << maxFenceValue << std::endl;
+        }
+    }
+    else
+    {
+        std::cout << "  [DEBUG] Fence already completed: " << m_fence->GetCompletedValue() << " >= " << maxFenceValue << std::endl;
+    }
+    
+    // Also signal and wait to ensure queue is empty
+    const UINT64 fenceToSignal = maxFenceValue + 1;
+    std::cout << "  [DEBUG] Signaling fence " << fenceToSignal << " and waiting..." << std::endl;
+    
+    HRESULT hr = m_commandQueue->Signal(m_fence.Get(), fenceToSignal);
+    if (FAILED(hr))
+    {
+        std::cerr << "Failed to signal fence before resize: " << std::hex << hr << std::endl;
+        return;
+    }
+    
+    if (m_fence->GetCompletedValue() < fenceToSignal)
+    {
+        hr = m_fence->SetEventOnCompletion(fenceToSignal, m_fenceEvent);
+        if (FAILED(hr))
+        {
+            std::cerr << "Failed to set fence event: " << std::hex << hr << std::endl;
+            return;
+        }
+        
+        DWORD result = WaitForSingleObject(m_fenceEvent, 5000);
+        if (result == WAIT_TIMEOUT)
+        {
+            std::cerr << "WARNING: Timeout waiting for GPU signal to complete" << std::endl;
+        }
+        else
+        {
+            std::cout << "  [DEBUG] Signal fence " << fenceToSignal << " completed" << std::endl;
+        }
+    }
+    
+    std::cout << "  [DEBUG] Final fence completed value: " << m_fence->GetCompletedValue() << std::endl;
+    
+    // Now it's safe to resize - release current render targets
+    for (UINT i = 0; i < FrameCount; i++)
+    {
+        m_renderTargets[i].Reset();
+    }
+    
+    // Resize swap chain
+    DXGI_SWAP_CHAIN_DESC swapChainDesc = {};
+    hr = m_swapChain->GetDesc(&swapChainDesc);
+    
+    hr = m_swapChain->ResizeBuffers(
+        FrameCount,
+        width,
+        height,
+        swapChainDesc.BufferDesc.Format,
+        swapChainDesc.Flags
+    );
+    
+    if (FAILED(hr))
+    {
+        std::cerr << "Failed to resize swap chain: " << std::hex << hr << std::endl;
+        return;
+    }
+    
+    // CRITICAL: Update frame index to match the swap chain's current back buffer
+    // After ResizeBuffers, the back buffer index may have changed
+    m_frameIndex = m_swapChain->GetCurrentBackBufferIndex();
+    
+    // Update width and height
+    m_width = width;
+    m_height = height;
+    
+    // Recreate render target views
+    CreateRenderTargetViews();
+    
+    // Recreate depth buffer
+    CreateDepthBuffer();
+    
+    // Update HDR renderer if it exists
+    if (m_hdrRenderer)
+    {
+        m_hdrRenderer->Resize(width, height);
+    }
+    
+    // DO NOT reset command allocators here!
+    // The current frame's allocator is still in use
+    // Allocators will be naturally reset in the frame cycle
+    
+    // Only reset the command list with the current allocator
+    hr = m_commandList->Reset(m_commandAllocators[m_frameIndex].Get(), m_pipelineState.Get());
+    if (FAILED(hr))
+    {
+        std::cerr << "Failed to reset command list: " << std::hex << hr << std::endl;
+    }
+    
+    // Update all fence values to the new signal value
+    for (UINT i = 0; i < FrameCount; i++)
+    {
+        m_fenceValues[i] = fenceToSignal;
+    }
+    
+    std::cout << "Graphics engine resized successfully to " << width << "x" << height << std::endl;
+}
+
+void GraphicsEngine::RequestResize(UINT width, UINT height)
+{
+    // Store the resize request to be processed at the start of the next frame
+    m_resizePending = true;
+    m_pendingWidth = width;
+    m_pendingHeight = height;
+}
+
+void GraphicsEngine::ProcessPendingResize(Engine::Rendering::BaseCameraController* camera)
+{
+    if (m_resizePending)
+    {
+        // Clear the flag first to prevent recursion
+        m_resizePending = false;
+        
+        // Perform the actual resize
+        // At this point:
+        // - GPU has finished previous frame (WaitForPreviousFrame was called)
+        // - ImGui hasn't started new frame yet (NewFrame not called)
+        // - Command list is ready to be reset
+        Resize(m_pendingWidth, m_pendingHeight);
+        
+        // Mark that we need to skip this frame's rendering
+        // The command allocator is in an invalid state after resize
+        m_skipCurrentFrame = true;
+        
+        // Update camera aspect ratio after resize
+        if (camera)
+        {
+            camera->SetWindowSize((float)m_pendingWidth, (float)m_pendingHeight);
+        }
+    }
+}
 
 
