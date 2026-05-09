@@ -63,6 +63,58 @@ void ChordataSkeletonGenerator::GenerateSpine(Skeleton& skeleton, float bodyLeng
         
         int parentIndex = (i > 0) ? (i - 1) : -1; // First vertebra is root
         skeleton.AddBone(CreateBone(name, position, length, parentIndex), parentIndex);
+        
+        // Set anatomical axes for proper voxel growth direction
+        Bone& newBone = const_cast<Bone&>(skeleton.GetBones().back());
+        if (i == 0)
+        {
+            // Root vertebra: forward = +Z, up = +Y, right = +X
+            newBone.forwardAxis = {0.0f, 0.0f, 1.0f};
+            newBone.upAxis = {0.0f, 1.0f, 0.0f};
+            newBone.rightAxis = {1.0f, 0.0f, 0.0f};
+        }
+        else
+        {
+            // Subsequent vertebrae: inherit from parent
+            const Bone& parent = skeleton.GetBones()[parentIndex];
+            newBone.forwardAxis = parent.forwardAxis;
+            newBone.upAxis = parent.upAxis;
+            newBone.rightAxis = parent.rightAxis;
+        }
+    }
+    
+    // Add rib connections for thoracic vertebrae (middle section)
+    // Connect left and right lateral attachment points to simulate ribcage
+    int ribStart = vertebraCount / 4;      // Start ribs at 25% up spine
+    int ribEnd = vertebraCount * 3 / 4;    // End ribs at 75% up spine
+    
+    for (int i = ribStart; i < ribEnd; ++i)
+    {
+        // Find left and right lateral attachment bones for this vertebra
+        int vertebraBoneIndex = i;
+        int leftRibIndex = -1;
+        int rightRibIndex = -1;
+        
+        // Search for lateral attachment bones (added by GenerateAttachmentsForVertebra)
+        const auto& bones = skeleton.GetBones();
+        for (size_t b = 0; b < bones.size(); ++b)
+        {
+            if (bones[b].parentIndex == vertebraBoneIndex)
+            {
+                // Check if this is a lateral attachment based on position
+                if (bones[b].localPosition.x < -0.1f)
+                    leftRibIndex = static_cast<int>(b);
+                else if (bones[b].localPosition.x > 0.1f)
+                    rightRibIndex = static_cast<int>(b);
+            }
+        }
+        
+        // Connect left and right ribs if both exist
+        if (leftRibIndex != -1 && rightRibIndex != -1)
+        {
+            skeleton.AddStructuralConnection(leftRibIndex, rightRibIndex,
+                                             StructuralConnectionType::RIB);
+        }
     }
 }
 
@@ -72,6 +124,12 @@ void ChordataSkeletonGenerator::GenerateHead(Skeleton& skeleton, int spineTopInd
     XMFLOAT3 length = {headSize * 1.2f, headSize * 1.0f, headSize * 1.2f}; // Larger head
     
     skeleton.AddBone(CreateBone("Head", position, length, spineTopIndex), spineTopIndex);
+    
+    // Set anatomical axes for head
+    Bone& headBone = const_cast<Bone&>(skeleton.GetBones().back());
+    headBone.forwardAxis = {0.0f, 0.0f, 1.0f}; // Forward
+    headBone.upAxis = {0.0f, 1.0f, 0.0f};      // Up
+    headBone.rightAxis = {1.0f, 0.0f, 0.0f};   // Right
 }
 
 // NEW: Flexible attachment system - each vertebra can grow up to 5 appendages
@@ -272,6 +330,29 @@ void ChordataSkeletonGenerator::GenerateLimbBone(
     bone.mass = length.x * length.y * length.z;
     
     skeleton.AddBone(bone, parentIndex);
+    
+    // Set anatomical axes for limb (grows outward from attachment point)
+    Bone& limbBone = const_cast<Bone&>(skeleton.GetBones().back());
+    limbBone.forwardAxis = position; // Direction of growth
+    
+    // Calculate orthogonal basis
+    XMVECTOR fwd = XMLoadFloat3(&limbBone.forwardAxis);
+    XMVECTOR up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+    XMVECTOR right = XMVector3Cross(fwd, up);
+    
+    // If forward is parallel to up, use different up vector
+    float rightLength = XMVectorGetX(XMVector3Length(right));
+    if (rightLength < 0.01f)
+    {
+        up = XMVectorSet(1.0f, 0.0f, 0.0f, 0.0f);
+        right = XMVector3Cross(fwd, up);
+    }
+    
+    right = XMVector3Normalize(right);
+    up = XMVector3Normalize(XMVector3Cross(right, fwd));
+    
+    XMStoreFloat3(&limbBone.rightAxis, right);
+    XMStoreFloat3(&limbBone.upAxis, up);
 }
 
 void ChordataSkeletonGenerator::GenerateSensoryOrgan(
