@@ -51,12 +51,14 @@ private:
     
     // NEW: Skeleton-based density functions
     float ComputeBoneDensity(const DirectX::XMFLOAT3& voxelPos, 
-                             const Engine::Animation::Bone& bone) const;
+                             const Engine::Animation::Bone& bone,
+                             float adaptiveScale) const;
     
     float CylinderSDF(const DirectX::XMFLOAT3& pos,
                       const DirectX::XMFLOAT3& boneStart,
                       const DirectX::XMFLOAT3& boneEnd,
-                      float radius) const;
+                      float radius,
+                      float adaptiveScale) const;
 };
 
 } // namespace Generation

@@ -41,7 +41,7 @@ void ChordataSkeletonGenerator::GenerateSpine(Skeleton& skeleton, float bodyLeng
 {
     float vertebraSpacing = bodyLength / vertebraCount;
     
-    // Create vertebrae from bottom to top
+    // Create vertebrae from bottom to top (along Y axis)
     for (int i = 0; i < vertebraCount; ++i)
     {
         std::string name = "Vertebra_" + std::to_string(i);
@@ -51,15 +51,15 @@ void ChordataSkeletonGenerator::GenerateSpine(Skeleton& skeleton, float bodyLeng
         XMFLOAT3 position;
         if (i == 0)
         {
-            position = {0.0f, 0.0f, -bodyLength / 2.0f};
+            position = {0.0f, -bodyLength / 2.0f, 0.0f}; // Start at bottom (negative Y)
         }
         else
         {
-            // Relative offset from parent (just move up by spacing)
-            position = {0.0f, 0.0f, vertebraSpacing};
+            // Relative offset from parent (move UP in Y)
+            position = {0.0f, vertebraSpacing, 0.0f};
         }
         
-        XMFLOAT3 length = {0.15f, 0.15f, vertebraSpacing * 0.8f};
+        XMFLOAT3 length = {0.15f, vertebraSpacing * 0.8f, 0.15f}; // Y is the length axis
         
         int parentIndex = (i > 0) ? (i - 1) : -1; // First vertebra is root
         skeleton.AddBone(CreateBone(name, position, length, parentIndex), parentIndex);
@@ -68,7 +68,7 @@ void ChordataSkeletonGenerator::GenerateSpine(Skeleton& skeleton, float bodyLeng
 
 void ChordataSkeletonGenerator::GenerateHead(Skeleton& skeleton, int spineTopIndex, float headSize)
 {
-    XMFLOAT3 position = {0.0f, 0.0f, headSize * 0.5f};
+    XMFLOAT3 position = {0.0f, headSize * 0.5f, 0.0f}; // Above spine top (Y axis)
     XMFLOAT3 length = {headSize, headSize * 0.8f, headSize};
     
     skeleton.AddBone(CreateBone("Head", position, length, spineTopIndex), spineTopIndex);

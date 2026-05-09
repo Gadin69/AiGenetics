@@ -70,8 +70,8 @@ void ArthropodaSkeletonGenerator::GenerateThoraxSegments(
     for (int i = 0; i < segmentCount; ++i)
     {
         std::string name = "Thorax_" + std::to_string(i);
-        XMFLOAT3 position = {0.0f, 0.0f, -(i + 1) * segmentLength};
-        XMFLOAT3 length = {0.2f * segmentLength, 0.15f * segmentLength, segmentLength * 0.9f};
+        XMFLOAT3 position = {0.0f, -(i + 1) * segmentLength, 0.0f}; // Down in Y
+        XMFLOAT3 length = {0.2f * segmentLength, segmentLength * 0.9f, 0.15f * segmentLength}; // Y is length
         
         int parentIndex = i; // Head is index 0, first thorax is index 1
         skeleton.AddBone(CreateBone(name, position, length, parentIndex), parentIndex);
@@ -87,8 +87,8 @@ void ArthropodaSkeletonGenerator::GenerateAbdomenSegments(
     for (int i = 0; i < segmentCount; ++i)
     {
         std::string name = "Abdomen_" + std::to_string(i);
-        XMFLOAT3 position = {0.0f, 0.0f, -segmentLength};
-        XMFLOAT3 length = {0.18f * segmentLength, 0.12f * segmentLength, segmentLength * 0.9f};
+        XMFLOAT3 position = {0.0f, -segmentLength, 0.0f}; // Down in Y
+        XMFLOAT3 length = {0.18f * segmentLength, segmentLength * 0.9f, 0.12f * segmentLength}; // Y is length
         
         skeleton.AddBone(CreateBone(name, position, length, parentIndex), parentIndex);
         parentIndex = static_cast<int>(skeleton.GetBoneCount()) - 1;

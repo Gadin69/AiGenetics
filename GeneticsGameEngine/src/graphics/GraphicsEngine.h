@@ -168,6 +168,13 @@ private:
     Microsoft::WRL::ComPtr<ID3D12Resource> m_cameraConstantBuffer;
     UINT8* m_pCameraConstantData = nullptr;
     
+    // ENTITY ARCHITECTURE: Per-object constant buffer upload heap
+    // One upload heap for all creature world matrices (256-byte aligned per object)
+    Microsoft::WRL::ComPtr<ID3D12Resource> m_objectConstantBuffer;
+    UINT8* m_pObjectConstantData = nullptr;
+    UINT m_objectCBByteSize = 256; // 256-byte aligned size for XMFLOAT4X4 (64 bytes)
+    UINT m_maxCreatures = 10; // Maximum number of creatures supported
+    
     // Wireframe rendering state
     bool m_wireframeMode = false;
     

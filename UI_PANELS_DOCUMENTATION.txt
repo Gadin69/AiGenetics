@@ -1,0 +1,254 @@
+================================================================================
+UI PANELS DOCUMENTATION - Genetics Game Engine
+================================================================================
+Generated: May 8, 2026
+Phase: 7 (Procedural Animation System - Partial)
+Status: All panels implemented EXCEPT Task 6 (Skeleton Debug Panel)
+================================================================================
+
+ARCHITECTURE OVERVIEW
+================================================================================
+- UI System: Dear ImGui with DirectX 12 backend
+- UIManager Location: src/engine/ui/panels/UIManager.h/cpp
+- Main Render Call: UIManager::RenderPanels() called every frame
+- Panel Visibility: Toggleable via checkboxes in Main Control Panel
+- Keyboard Shortcut: ESCAPE key toggles Main Control Panel
+
+================================================================================
+PANEL 1: MAIN CONTROL PANEL
+================================================================================
+Visibility: ALWAYS VISIBLE by default (m_showControlPanel = true)
+Window Flags: ImGuiWindowFlags_AlwaysAutoResize
+Toggle: ESCAPE key or checkbox in panel itself
+
+CONTROLS:
+---------
+1. Panel Toggles (Checkboxes):
+   - Demo Window (m_showDemoWindow) - Shows ImGui demo
+   - Creature Selector (m_showCreaturePanel) - Creature list panel
+   - Debug Panel (m_showDebugPanel) - Performance/debug info
+   - Graphics Options (m_showGraphicsPanel) - Display/quality settings
+   - Skeleton Debug (m_showSkeletonPanel) - Phase 7 skeleton viewer
+
+2. Rendering Options:
+   - Wireframe Mode (bool& wireframeMode) - Toggle wireframe rendering
+
+3. Controls Help Text:
+   - WASD - Move camera
+   - Mouse - Look around
+   - Escape - Toggle this panel
+
+4. Quit Application Button:
+   - Red styled button
+   - Calls m_quitCallback() when clicked
+   - Located at bottom of panel
+
+================================================================================
+PANEL 2: GRAPHICS OPTIONS
+================================================================================
+Visibility: Toggleable (m_showGraphicsPanel = false by default)
+Window Flags: ImGuiWindowFlags_AlwaysAutoResize
+Access: Checkbox in Main Control Panel
+
+SECTIONS:
+---------
+1. DISPLAY SETTINGS:
+   - Resolution Dropdown (5 options):
+     * 1920x1080 (Full HD)
+     * 2560x1440 (QHD)
+     * 3840x2160 (4K UHD)
+     * 1280x720 (HD)
+     * 1600x900 (HD+)
+   
+   - Fullscreen Checkbox:
+     * Calls m_fullscreenCallback() when toggled
+     * NOTE: Currently has known bugs (documented in git history)
+   
+   - VSync Checkbox:
+     * Static bool vsync (default: true)
+
+2. QUALITY SETTINGS:
+   - Quality Preset Dropdown (5 options):
+     * Low
+     * Medium
+     * High (default)
+     * Ultra
+     * Custom
+   
+   - Shadow Quality Combo (5 options):
+     * Off, Low, Medium, High (default), Ultra
+   
+   - Anti-Aliasing Combo (4 options):
+     * Off, 2x MSAA, 4x MSAA (default), 8x MSAA
+
+3. RENDERING FEATURES (Checkboxes):
+   - HDR (default: true)
+   - Bloom (default: true)
+   - Screen Space AO (default: true)
+   - Motion Blur (default: false)
+   - Depth of Field (default: false)
+
+4. ACTION BUTTONS:
+   - Apply Settings (green button):
+     * Currently placeholder - TODO: send to GraphicsEngine
+   
+   - Reset to Default:
+     * Resets all settings to defaults listed above
+
+================================================================================
+PANEL 3: CREATURE SELECTOR
+================================================================================
+Visibility: Toggleable (m_showCreaturePanel = false by default)
+Access: Checkbox in Main Control Panel
+
+DISPLAYS:
+---------
+For each creature in geneticsIntegration->GetCreatureMeshes():
+- Creature ID (e.g., "Chordata_001", "Arthropoda_001", "Mollusca_001")
+- Vertex count: creatureMeshes[i].meshRenderer->GetVertexCount()
+- Spacing between entries
+
+NOTE: This panel is read-only, displays current scene creatures
+
+================================================================================
+PANEL 4: DEBUG PANEL
+================================================================================
+Visibility: Toggleable (m_showDebugPanel = false by default)
+Access: Checkbox in Main Control Panel
+
+DISPLAYS:
+---------
+1. PERFORMANCE:
+   - FPS: ImGui::GetIO().Framerate (float, 1 decimal)
+   - Frame: frameCount (int, passed from main loop)
+
+2. SCENE:
+   - Creatures: geneticsIntegration->GetCreatureMeshes().size()
+
+NOTE: Minimal debug info, could be expanded
+
+================================================================================
+PANEL 5: SKELETON DEBUG PANEL (PHASE 7)
+================================================================================
+Visibility: Toggleable (m_showSkeletonPanel = false by default)
+Access: Checkbox in Main Control Panel
+STATUS: IMPLEMENTED but NOT integrated with 3D rendering yet
+
+SECTIONS:
+---------
+1. CREATURE SELECTOR:
+   - Combo box listing all creature names
+   - static int selectedCreature (index)
+   - Rebuilds combo from creatureMeshes each frame
+
+2. CREATURE INFO:
+   - Creature ID
+   - Mesh stats: vertices and triangles
+
+3. SKELETON INFO (if creature.skeleton exists):
+   - Green checkmark: "✓ Skeleton Generated"
+   - Total bone count: skeleton.GetBones().size()
+   
+   - Visualization Toggle:
+     * Checkbox: "Show Skeleton Visualization"
+     * Note: "(Yellow wireframe lines)"
+     * Accesses: creature.showSkeletonVisualization (via const_cast)
+   
+   - Bone Hierarchy Tree:
+     * Shows first 20 bones (to avoid UI clutter)
+     * Indented by hierarchy depth (16px per level)
+     * Format: [index] BoneName (parent: index) or (ROOT)
+     * Per bone displays:
+       - Length: (x, y, z)
+       - Position: (x, y, z)
+   
+   - Skeleton Statistics:
+     * Root bones count (parentIndex == -1)
+     * Limb bones count (name contains "Leg", "Arm", "Wing", "Tentacle")
+     * Organ bones count (name contains "Eye", "Organ")
+     * Total mass (sum of all bone.mass)
+   
+   - Info Section (blue text):
+     * "Bones act as metaball attractors"
+     * "Mesh wraps around skeleton"
+     * "Genetics control bone placement"
+
+4. NO SKELETON STATE:
+   - Red text: "✗ No skeleton available"
+   - Message: "Skeleton generation failed or not implemented"
+
+================================================================================
+PANEL 6: IMGUI DEMO WINDOW
+================================================================================
+Visibility: Toggleable (m_showDemoWindow = false by default)
+Access: Checkbox in Main Control Panel
+Source: ImGui::ShowDemoWindow() - built-in Dear ImGui demo
+
+================================================================================
+KEYBOARD CONTROLS
+================================================================================
+- ESCAPE: Toggles Main Control Panel visibility
+- WASD: Camera movement (handled by camera controller, not UIManager)
+- Mouse: Camera look (handled by camera controller)
+
+================================================================================
+CALLBACKS
+================================================================================
+1. m_quitCallback:
+   - Type: std::function<void()>
+   - Set via: SetQuitCallback(callback)
+   - Called when "Quit Application" button clicked
+
+2. m_fullscreenCallback:
+   - Type: std::function<void()>
+   - Set via: SetFullscreenCallback(callback)
+   - Called when "Fullscreen" checkbox toggled
+   - NOTE: Currently broken (documented in git history)
+
+================================================================================
+FILES TO PRESERVE
+================================================================================
+Core UI Files:
+- src/engine/ui/panels/UIManager.h
+- src/engine/ui/panels/UIManager.cpp
+- src/engine/ui/ImGuiRenderer.cpp (if exists)
+- src/engine/ui/CMakeLists.txt
+
+Dependencies:
+- third_party/imgui/ (ent Dear ImGui library)
+- src/engine/animation/Skeleton.h (for Skeleton Debug Panel)
+- src/genetics/GeneticsIntegration.h (for creature data access)
+
+CMakeLists Updates:
+- src/engine/CMakeLists.txt includes UI subdirectory
+- UI.vcxproj builds UIManager.cpp and related files
+
+================================================================================
+IMPLEMENTATION NOTES
+================================================================================
+1. All panels use ImGui::Begin/End pattern
+2. Window state (position/size) auto-saved to imgui.ini
+3. Static variables used for UI state (resolutions, quality settings, etc.)
+4. Panel visibility booleans stored as UIManager member variables
+5. Wireframe mode passed by reference from external scope
+6. frameCount passed from main render loop
+
+================================================================================
+KNOWN ISSUES (FROM GIT HISTORY)
+================================================================================
+1. Fullscreen toggle crashes on some configurations
+   - Last commit: "Fullscreen toggle still broken - DXGI swap chain resize issue"
+   - Requires investigation of DXGI swap chain recreation
+
+2. Graphics Options panel settings not applied to GraphicsEngine
+   - Apply Settings button is placeholder (TODO comment in code)
+   - Settings are UI-only currently
+
+3. Skeleton Debug Panel visualization not rendered in 3D viewport
+   - Panel shows skeleton data correctly
+   - 3D wireframe rendering of bones not yet implemented
+   - Requires integration with ProceduralMeshRenderer or custom line rendering
+
+================================================================================
+END OF DOCUMENTATION
+================================================================================

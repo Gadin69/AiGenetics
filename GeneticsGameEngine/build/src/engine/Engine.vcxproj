@@ -296,6 +296,10 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClCompile Include="C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine\rendering\materials\pbr\PBRMaterial.cpp" />
     <ClCompile Include="C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine\rendering\materials\pbr\MaterialSystem.cpp" />
     <ClCompile Include="C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine\rendering\textures\ProceduralTextureGenerator.cpp" />
+    <ClCompile Include="C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine\animation\Skeleton.cpp" />
+    <ClCompile Include="C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine\animation\ChordataSkeletonGenerator.cpp" />
+    <ClCompile Include="C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine\animation\ArthropodaSkeletonGenerator.cpp" />
+    <ClCompile Include="C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine\animation\MolluscaSkeletonGenerator.cpp" />
     <ClInclude Include="C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine\rendering\camera\CameraController.h" />
     <ClInclude Include="C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine\rendering\camera\CameraSystem.h" />
     <ClInclude Include="C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine\rendering\camera\CameraTypes.h" />
@@ -325,6 +329,12 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClInclude Include="C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine\genetics\expression\GeneticExpression.h" />
     <ClInclude Include="C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine\genetics\breeding\BreedingSystem.h" />
     <ClInclude Include="C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine\genetics\breeding\MutationEngine.h" />
+    <ClInclude Include="C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine\animation\Bone.h" />
+    <ClInclude Include="C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine\animation\Skeleton.h" />
+    <ClInclude Include="C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine\animation\SkeletonGenerator.h" />
+    <ClInclude Include="C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine\animation\ChordataSkeletonGenerator.h" />
+    <ClInclude Include="C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine\animation\ArthropodaSkeletonGenerator.h" />
+    <ClInclude Include="C:\Users\Taktix\Desktop\CodingAI\AiProjects\3dGenetics\GeneticsGameEngine\src\engine\animation\MolluscaSkeletonGenerator.h" />
   </ItemGroup>
   <ItemGroup />
   <ItemGroup>

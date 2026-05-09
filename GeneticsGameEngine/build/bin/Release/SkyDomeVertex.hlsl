@@ -1,11 +1,15 @@
 // Sky Dome Vertex Shader
+// Updated to match new root signature register layout
+
 cbuffer CameraConstants : register(b0)
 {
     float4x4 viewMatrix;
     float4x4 projectionMatrix;
 };
 
-cbuffer LightConstants : register(b2)
+// Sky dome doesn't use per-object transforms (b1)
+// Lights moved to b3 to match new root signature
+cbuffer LightConstants : register(b3)
 {
     float3 sunDirection;
     float sunIntensity;

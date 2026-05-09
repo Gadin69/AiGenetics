@@ -1,0 +1,73 @@
+FLAT MESH ISSUE - INVESTIGATION NOTES
+======================================
+
+USER REPORT: All creature meshes are FLAT like paper (2D), not 3D volumes.
+- Issue appeared during Phase 7 (skeleton visualization implementation)
+- Some edit broke the mesh generation
+- User tried reverting to WorkingUI branch but issue persists
+
+KEY EVIDENCE FROM CONSOLE OUTPUT:
+==================================
+Chordata bounding box: (-1.6,-0.15,-1.6) to (1.55,0.960072,1.55)
+Size: 3.15 x 1.11007 x 3.15
+
+Arthropoda bounding box: (-1.05,-0.1,-1.35) to (1.05,0.95,1.35)
+Size: 2.1 x 1.05 x 2.7
+
+Mollusca bounding box: (-1.55,-0.2,-1.6) to (1.55,1.55,1.55)
+Size: 3.1 x 1.75 x 3.15
+
+OBSERVATION: Y dimension IS present (1.11, 1.05, 1.75) so meshes are NOT completely flat.
+BUT user says they look flat like paper - this suggests:
+1. Normals might be wrong (lighting makes them look flat)
+2. Vertices might all be on one plane
+3. Scalar field might be generating 2D data
+
+WHAT WAS CHANGED DURING PHASE 7:
+==================================
+1. Added skeleton generation code (Skeleton.h/cpp, Bone.h, generators)
+2. Modified ScalarFieldGenerator to support skeleton-based generation
+3. Modified GeneticsIntegration to use skeleton-first pipeline
+4. Added skeleton visualization rendering in GraphicsEngine
+5. Modified taxonomy classes (Organism, Chordata, Arthropoda, Mollusca)
+
+SUSPECTED ROOT CAUSES:
+========================
+1. ScalarFieldGenerator.cpp - The scalar field might be generating incorrect data
+   - Check if density function creates proper 3D volumes
+   - Check if marching cubes receives valid 3D scalar field
+   
+2. MarchingCubes.cpp - The mesh extraction might be broken
+   - Check if vertex normals are being calculated correctly
+   - Check if triangle generation is creating proper 3D geometry
+   
+3. Shader issue - PBRVertex.hlsl or PBRPixel.hlsl
+   - Check if world matrix transformation is correct
+   - Check if normals are being transformed properly
+   
+4. GeneticsIntegration.cpp - Mesh upload to GPU
+   - Check if vertex buffer is being created correctly
+   - Check if vertex layout matches shader expectations
+
+IMPORTANT: The issue persists even after reverting to WorkingUI branch.
+This means the bug was introduced BEFORE WorkingUI was created, OR
+there are untracked files/cache that preserve the bug.
+
+NEXT STEPS:
+============
+1. Switch to master branch
+2. Compare source files with WorkingUI branch
+3. Identify what files differ between branches
+4. Make WorkingUI files match master
+5. Rebuild and test
+6. If still broken, the bug is in master (introduced earlier)
+7. If fixed, the bug was in WorkingUI specific changes
+
+FILES TO CHECK:
+================
+- src/engine/procedural/generation/ScalarFieldGenerator.cpp
+- src/engine/procedural/mesh/MarchingCubes.cpp
+- src/graphics/PBRVertex.hlsl
+- src/graphics/PBRPixel.hlsl
+- src/genetics/GeneticsIntegration.cpp
+- src/graphics/GraphicsEngine.cpp (vertex buffer creation)

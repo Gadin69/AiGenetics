@@ -3,12 +3,14 @@
 	[
 		"C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/build/cmake_install.cmake",
 		"C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/build/src/cmake_install.cmake",
+		"C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/build/third_party/cmake_install.cmake",
 		"C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/build/src/core/cmake_install.cmake",
 		"C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/build/src/graphics/cmake_install.cmake",
 		"C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/build/src/genetics/cmake_install.cmake",
 		"C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/build/src/engine/cmake_install.cmake",
 		"C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/build/src/engine/procedural/cmake_install.cmake",
-		"C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/build/src/engine/neural/cmake_install.cmake"
+		"C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/build/src/engine/neural/cmake_install.cmake",
+		"C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/build/src/engine/ui/cmake_install.cmake"
 	],
 	"Parallel" : false
 }

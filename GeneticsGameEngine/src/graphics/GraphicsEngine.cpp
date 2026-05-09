@@ -403,6 +403,14 @@ void GraphicsEngine::Render(std::unique_ptr<GeneticsIntegration>& geneticsIntegr
         if (FAILED(hr))
         {
             std::cerr << "Present failed with HRESULT: 0x" << std::hex << hr << std::dec << std::endl;
+            
+            // If device was removed, we need to abort this frame
+            if (hr == DXGI_ERROR_DEVICE_REMOVED || hr == DXGI_ERROR_DEVICE_RESET)
+            {
+                std::cerr << "Device removed/reset detected, aborting frame" << std::endl;
+                // Don't call MoveToNextFrame() - the device is in an invalid state
+                return;
+            }
         }
         
         // Move to next frame
@@ -1387,6 +1395,52 @@ bool GraphicsEngine::CreateCameraConstantBuffer()
     );
     
     std::cout << "  Camera constant buffer created (" << bufferSize << " bytes)" << std::endl;
+    
+    // ENTITY ARCHITECTURE: Create per-object constant buffer upload heap
+    // This stores world matrices for all creatures (256 bytes per creature)
+    UINT objectBufferSize = m_objectCBByteSize * m_maxCreatures;
+    std::cout << "  Creating per-object constant buffer (" << objectBufferSize << " bytes for " 
+              << m_maxCreatures << " creatures)..." << std::endl;
+    
+    D3D12_HEAP_PROPERTIES objectHeapProps = {};
+    objectHeapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
+    objectHeapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+    objectHeapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+    objectHeapProps.CreationNodeMask = 1;
+    objectHeapProps.VisibleNodeMask = 1;
+    
+    D3D12_RESOURCE_DESC objectBufferDesc = {};
+    objectBufferDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+    objectBufferDesc.Width = objectBufferSize;
+    objectBufferDesc.Height = 1;
+    objectBufferDesc.DepthOrArraySize = 1;
+    objectBufferDesc.MipLevels = 1;
+    objectBufferDesc.Format = DXGI_FORMAT_UNKNOWN;
+    objectBufferDesc.SampleDesc.Count = 1;
+    objectBufferDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+    objectBufferDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+    
+    ThrowIfFailed(
+        m_device->CreateCommittedResource(
+            &objectHeapProps,
+            D3D12_HEAP_FLAG_NONE,
+            &objectBufferDesc,
+            D3D12_RESOURCE_STATE_GENERIC_READ,
+            nullptr,
+            IID_PPV_ARGS(&m_objectConstantBuffer)
+        ),
+        "Create object constant buffer failed"
+    );
+    
+    // Map and keep mapped for lifetime
+    CD3DX12_RANGE objectReadRange(0, 0);
+    ThrowIfFailed(
+        m_objectConstantBuffer->Map(0, &objectReadRange, reinterpret_cast<void**>(&m_pObjectConstantData)),
+        "Map object constant buffer failed"
+    );
+    
+    std::cout << "  Per-object constant buffer created and mapped" << std::endl;
+    
     return true;
 }
 
@@ -1711,13 +1765,15 @@ void GraphicsEngine::RenderCreatures(const std::vector<CreatureMeshData>& creatu
     if (materialData)
     {
         memcpy(materialData, &defaultMaterial, sizeof(DefaultMaterialCB));
-        m_commandList->SetGraphicsRootConstantBufferView(1, materialBuffer->GetGPUVirtualAddress());
+        // ENTITY ARCHITECTURE: Material moved to root parameter 2 (b2)
+        // Root parameter 1 is now per-object world matrix (set per-creature in render loop)
+        m_commandList->SetGraphicsRootConstantBufferView(2, materialBuffer->GetGPUVirtualAddress());
     }
     
-    // Set light constant buffer (b2)
-    m_commandList->SetGraphicsRootConstantBufferView(2, m_lightConstantBuffer->GetGPUVirtualAddress());
+    // Set light constant buffer (b3) - moved from root parameter 2 to 3
+    m_commandList->SetGraphicsRootConstantBufferView(3, m_lightConstantBuffer->GetGPUVirtualAddress());
     
-    // Set camera position constant buffer (b3)
+    // Set camera position constant buffer (b4) - moved from root parameter 3 to 4
     struct CameraPosCB {
         DirectX::XMFLOAT3 position;
         float pad;
@@ -1765,17 +1821,18 @@ void GraphicsEngine::RenderCreatures(const std::vector<CreatureMeshData>& creatu
     if (cameraPosData)
     {
         memcpy(cameraPosData, &cameraPosCB, sizeof(CameraPosCB));
-        m_commandList->SetGraphicsRootConstantBufferView(3, cameraPosBuffer->GetGPUVirtualAddress());
+        // ENTITY ARCHITECTURE: Camera position moved to root parameter 4 (b4)
+        m_commandList->SetGraphicsRootConstantBufferView(4, cameraPosBuffer->GetGPUVirtualAddress());
     }
     
-    // Bind shadow map constant buffer (b4)
-    m_commandList->SetGraphicsRootConstantBufferView(4, m_shadowMapConstantBuffer->GetGPUVirtualAddress());
+    // Bind shadow map constant buffer (b5) - moved from root parameter 4 to 5
+    m_commandList->SetGraphicsRootConstantBufferView(5, m_shadowMapConstantBuffer->GetGPUVirtualAddress());
     
-    // Bind shadow map SRV (t0) - root parameter 5 is descriptor table
+    // Bind shadow map SRV (t0) - root parameter 6 is descriptor table
     ID3D12DescriptorHeap* pShadowHeap = m_shadowMapSrvHeap.Get();
     m_commandList->SetDescriptorHeaps(1, &pShadowHeap);
     m_commandList->SetGraphicsRootDescriptorTable(
-        5,
+        6,
         m_shadowMapSrvHeap->GetGPUDescriptorHandleForHeapStart()
     );
     
@@ -1801,6 +1858,25 @@ void GraphicsEngine::RenderCreatures(const std::vector<CreatureMeshData>& creatu
             std::cerr << "RenderCreatures: Creature " << i << " has no vertices!" << std::endl;
             continue;
         }
+        
+        // ENTITY ARCHITECTURE: Update per-object world matrix constant buffer
+        // Create world matrix from creature position (translation only for now)
+        DirectX::XMMATRIX worldMatrix = DirectX::XMMatrixTranslation(
+            creature.position.x,
+            creature.position.y,
+            creature.position.z
+        );
+        
+        DirectX::XMFLOAT4X4 worldMatrixFloat;
+        DirectX::XMStoreFloat4x4(&worldMatrixFloat, worldMatrix);
+        
+        // Copy to per-object CB upload heap (256-byte aligned slot for this creature)
+        UINT8* destinationData = m_pObjectConstantData + (i * m_objectCBByteSize);
+        memcpy(destinationData, &worldMatrixFloat, sizeof(DirectX::XMFLOAT4X4));
+        
+        // Bind per-object CBV (register b1) - GPU virtual address + offset
+        UINT64 objectCBAddress = m_objectConstantBuffer->GetGPUVirtualAddress() + (i * m_objectCBByteSize);
+        m_commandList->SetGraphicsRootConstantBufferView(1, objectCBAddress);
         
         // Render the creature mesh using PBR pipeline
         creature.meshRenderer->Render(m_commandList.Get());
@@ -2003,48 +2079,55 @@ bool GraphicsEngine::CreatePBRRootSignature()
     std::cout << "  Creating PBR root signature..." << std::endl;
     
     // Create root signature with multiple CBVs for PBR:
-    // b0: View/Projection matrices (VS)
-    // b1: Material constants (PS)
-    // b2: Light constants (PS)
-    // b3: Camera position (PS)
-    // b4: Shadow map matrices (PS)
+    // b0: View/Projection matrices (VS) - per-frame
+    // b1: World Matrix (VS) - per-object entity transform
+    // b2: Material constants (PS)
+    // b3: Light constants (PS)
+    // b4: Camera position (PS)
+    // b5: Shadow map matrices (PS)
     // t0: Shadow map texture (PS) - descriptor table
     // s0: Shadow sampler (PS) - static sampler
     
-    D3D12_ROOT_PARAMETER rootParams[6] = {};
+    D3D12_ROOT_PARAMETER rootParams[7] = {};
     
-    // b0: View/Projection (Vertex Shader)
+    // b0: View/Projection (Vertex Shader) - per-frame
     rootParams[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
     rootParams[0].Descriptor.ShaderRegister = 0;
     rootParams[0].Descriptor.RegisterSpace = 0;
     rootParams[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
     
-    // b1: Material (Pixel Shader)
+    // b1: World Matrix (Vertex Shader) - per-object entity transform
     rootParams[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-    rootParams[1].Descriptor.ShaderRegister = 1;  // Matches shader's register(b1)
+    rootParams[1].Descriptor.ShaderRegister = 1;  // Matches PBRVertex.hlsl register(b1)
     rootParams[1].Descriptor.RegisterSpace = 0;
-    rootParams[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+    rootParams[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
     
-    // b2: Lights (Pixel Shader)
+    // b2: Material (Pixel Shader)
     rootParams[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
     rootParams[2].Descriptor.ShaderRegister = 2;  // Matches shader's register(b2)
     rootParams[2].Descriptor.RegisterSpace = 0;
     rootParams[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
     
-    // b3: Camera (Pixel Shader)
+    // b3: Lights (Pixel Shader)
     rootParams[3].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
     rootParams[3].Descriptor.ShaderRegister = 3;  // Matches shader's register(b3)
     rootParams[3].Descriptor.RegisterSpace = 0;
     rootParams[3].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
     
-    // b4: Shadow matrices (Pixel Shader)
+    // b4: Camera (Pixel Shader)
     rootParams[4].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
     rootParams[4].Descriptor.ShaderRegister = 4;  // Matches shader's register(b4)
     rootParams[4].Descriptor.RegisterSpace = 0;
     rootParams[4].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
     
+    // b5: Shadow matrices (Pixel Shader)
+    rootParams[5].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+    rootParams[5].Descriptor.ShaderRegister = 5;  // Matches shader's register(b5)
+    rootParams[5].Descriptor.RegisterSpace = 0;
+    rootParams[5].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+    
     // t0: Shadow map SRV (Pixel Shader) - descriptor table
-    rootParams[5].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+    rootParams[6].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
     
     // CRITICAL: Descriptor range must persist for lifetime of root signature
     // Use static storage to avoid dangling pointer
@@ -2055,9 +2138,9 @@ bool GraphicsEngine::CreatePBRRootSignature()
     srvRange.RegisterSpace = 0;
     srvRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
     
-    rootParams[5].DescriptorTable.NumDescriptorRanges = 1;
-    rootParams[5].DescriptorTable.pDescriptorRanges = &srvRange;
-    rootParams[5].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+    rootParams[6].DescriptorTable.NumDescriptorRanges = 1;
+    rootParams[6].DescriptorTable.pDescriptorRanges = &srvRange;
+    rootParams[6].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
     
     // Static sampler for shadow map (comparison sampler for PCF)
     D3D12_STATIC_SAMPLER_DESC shadowSampler = {};
@@ -2076,7 +2159,7 @@ bool GraphicsEngine::CreatePBRRootSignature()
     shadowSampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
     
     D3D12_ROOT_SIGNATURE_DESC rootDesc = {};
-    rootDesc.NumParameters = 6;  // b0-b4 CBVs + 1 descriptor table
+    rootDesc.NumParameters = 7;  // b0-b5 CBVs + 1 descriptor table
     rootDesc.pParameters = rootParams;
     rootDesc.NumStaticSamplers = 1;
     rootDesc.pStaticSamplers = &shadowSampler;
@@ -2984,6 +3067,12 @@ bool GraphicsEngine::IsFullscreen() const
 void GraphicsEngine::Resize(UINT width, UINT height)
 {
     if (!m_swapChain || width == 0 || height == 0) return;
+    
+    // Skip resize if dimensions haven't changed
+    if (width == m_width && height == m_height)
+    {
+        return;
+    }
     
     std::cout << "Resizing graphics engine from " << m_width << "x" << m_height 
               << " to " << width << "x" << height << std::endl;

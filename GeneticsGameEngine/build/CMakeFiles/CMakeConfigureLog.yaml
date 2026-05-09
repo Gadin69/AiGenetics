@@ -43,6 +43,7 @@ events:
         - "C:\\Users\\Taktix\\Miniconda3\\bin"
         - "c:\\Users\\Taktix\\AppData\\Roaming\\Qoder\\User\\globalStorage\\github.copilot-chat\\debugCommand"
         - "c:\\Users\\Taktix\\AppData\\Roaming\\Qoder\\User\\globalStorage\\github.copilot-chat\\copilotCli"
+        - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
         - "C:\\Program Files\\Meta Horizon\\Support\\oculus-runtime"
         - "C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.9.10-hotspot\\bin"
         - "C:\\Python314\\Scripts"
@@ -57,7 +58,6 @@ events:
         - "C:\\WINDOWS\\System32\\Wbem"
         - "C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0"
         - "C:\\WINDOWS\\System32\\OpenSSH"
-        - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
         - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA app\\NvDLISR"
         - "C:\\Program Files\\Git\\cmd"
         - "C:\\Program Files\\dotnet"
@@ -134,6 +134,7 @@ events:
         - "C:\\Users\\Taktix\\.dotnet\\tools"
         - "C:\\Users\\Taktix\\AppData\\Local\\Programs\\Microsoft VS Code\\bin"
         - "C:\\Users\\Taktix\\AppData\\Local\\Programs\\Antigravity\\bin"
+        - "c:\\Users\\Taktix\\.qoder\\extensions\\ms-python.debugpy-2025.14.0-win32-x64\\bundled\\scripts\\noConfigScripts"
   -
     kind: "message-v1"
     backtrace:
@@ -150,7 +151,7 @@ events:
       The output was:
       0
       MSBuild version 17.13.19+0d9f5a35a for .NET Framework
-      Build started 5/1/2026 11:42:06 AM.
+      Build started 5/8/2026 9:01:06 PM.
       
       Project "C:\\Users\\Taktix\\Desktop\\CodingAI\\AiProjects\\3dGenetics\\GeneticsGameEngine\\build\\CMakeFiles\\4.3.2\\CompilerIdCXX\\CompilerIdCXX.vcxproj" on node 1 (default targets).
       PrepareForBuild:
@@ -179,7 +180,7 @@ events:
           0 Warning(s)
           0 Error(s)
       
-      Time Elapsed 00:00:00.86
+      Time Elapsed 00:00:00.83
       
       
       Compilation of the CXX compiler identification source "CMakeCXXCompilerId.cpp" produced "CompilerIdCXX.exe"
@@ -220,6 +221,7 @@ events:
       - "C:/Users/Taktix/miniconda3/bin/"
       - "C:/Users/Taktix/AppData/Roaming/Qoder/User/globalStorage/github.copilot-chat/debugCommand/"
       - "C:/Users/Taktix/AppData/Roaming/Qoder/User/globalStorage/github.copilot-chat/copilotCli/"
+      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/"
       - "C:/Program Files/Meta Horizon/Support/oculus-runtime/"
       - "C:/Program Files/Eclipse Adoptium/jdk-21.0.9.10-hotspot/bin/"
       - "C:/Python314/Scripts/"
@@ -234,7 +236,6 @@ events:
       - "C:/Windows/System32/wbem/"
       - "C:/Windows/System32/WindowsPowerShell/v1.0/"
       - "C:/Windows/System32/OpenSSH/"
-      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/"
       - "C:/Program Files/NVIDIA Corporation/NVIDIA app/NvDLISR/"
       - "C:/Program Files/Git/cmd/"
       - "C:/Program Files/dotnet/"
@@ -256,12 +257,13 @@ events:
       - "C:/Users/Taktix/AppData/Local/Programs/Python/Python312/Scripts/"
       - "C:/Users/Taktix/AppData/Local/Programs/Qoder/bin/"
       - "C:/Users/Taktix/AppData/Local/Microsoft/WindowsApps/"
-      - "C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/build/"
+      - "C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/"
       - "C:/Users/Taktix/.qoder/extensions/ms-python.debugpy-2025.10.0-win32-x64/bundled/scripts/noConfigScripts/"
       - "C:/Users/Taktix/AppData/Roaming/npm/"
       - "C:/Users/Taktix/.dotnet/tools/"
       - "C:/Users/Taktix/AppData/Local/Programs/Microsoft VS Code/bin/"
       - "C:/Users/Taktix/AppData/Local/Programs/Antigravity/bin/"
+      - "C:/Users/Taktix/.qoder/extensions/ms-python.debugpy-2025.14.0-win32-x64/bundled/scripts/noConfigScripts/"
     searched_directories:
       - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.38.33130/bin/Hostx64/x64/link.com"
     found: "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.38.33130/bin/Hostx64/x64/link.exe"
@@ -275,6 +277,7 @@ events:
         - "C:\\Users\\Taktix\\Miniconda3\\bin"
         - "c:\\Users\\Taktix\\AppData\\Roaming\\Qoder\\User\\globalStorage\\github.copilot-chat\\debugCommand"
         - "c:\\Users\\Taktix\\AppData\\Roaming\\Qoder\\User\\globalStorage\\github.copilot-chat\\copilotCli"
+        - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
         - "C:\\Program Files\\Meta Horizon\\Support\\oculus-runtime"
         - "C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.9.10-hotspot\\bin"
         - "C:\\Python314\\Scripts"
@@ -289,7 +292,6 @@ events:
         - "C:\\WINDOWS\\System32\\Wbem"
         - "C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0"
         - "C:\\WINDOWS\\System32\\OpenSSH"
-        - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
         - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA app\\NvDLISR"
         - "C:\\Program Files\\Git\\cmd"
         - "C:\\Program Files\\dotnet"
@@ -366,6 +368,7 @@ events:
         - "C:\\Users\\Taktix\\.dotnet\\tools"
         - "C:\\Users\\Taktix\\AppData\\Local\\Programs\\Microsoft VS Code\\bin"
         - "C:\\Users\\Taktix\\AppData\\Local\\Programs\\Antigravity\\bin"
+        - "c:\\Users\\Taktix\\.qoder\\extensions\\ms-python.debugpy-2025.14.0-win32-x64\\bundled\\scripts\\noConfigScripts"
   -
     kind: "find-v1"
     backtrace:
@@ -397,6 +400,7 @@ events:
       - "C:/Users/Taktix/miniconda3/bin/"
       - "C:/Users/Taktix/AppData/Roaming/Qoder/User/globalStorage/github.copilot-chat/debugCommand/"
       - "C:/Users/Taktix/AppData/Roaming/Qoder/User/globalStorage/github.copilot-chat/copilotCli/"
+      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/"
       - "C:/Program Files/Meta Horizon/Support/oculus-runtime/"
       - "C:/Program Files/Eclipse Adoptium/jdk-21.0.9.10-hotspot/bin/"
       - "C:/Python314/Scripts/"
@@ -411,7 +415,6 @@ events:
       - "C:/Windows/System32/wbem/"
       - "C:/Windows/System32/WindowsPowerShell/v1.0/"
       - "C:/Windows/System32/OpenSSH/"
-      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/"
       - "C:/Program Files/NVIDIA Corporation/NVIDIA app/NvDLISR/"
       - "C:/Program Files/Git/cmd/"
       - "C:/Program Files/dotnet/"
@@ -433,12 +436,13 @@ events:
       - "C:/Users/Taktix/AppData/Local/Programs/Python/Python312/Scripts/"
       - "C:/Users/Taktix/AppData/Local/Programs/Qoder/bin/"
       - "C:/Users/Taktix/AppData/Local/Microsoft/WindowsApps/"
-      - "C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/build/"
+      - "C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/"
       - "C:/Users/Taktix/.qoder/extensions/ms-python.debugpy-2025.10.0-win32-x64/bundled/scripts/noConfigScripts/"
       - "C:/Users/Taktix/AppData/Roaming/npm/"
       - "C:/Users/Taktix/.dotnet/tools/"
       - "C:/Users/Taktix/AppData/Local/Programs/Microsoft VS Code/bin/"
       - "C:/Users/Taktix/AppData/Local/Programs/Antigravity/bin/"
+      - "C:/Users/Taktix/.qoder/extensions/ms-python.debugpy-2025.14.0-win32-x64/bundled/scripts/noConfigScripts/"
     searched_directories:
       - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.38.33130/bin/Hostx64/x64/lld-link.com"
       - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.38.33130/bin/Hostx64/x64/lld-link.exe"
@@ -467,6 +471,9 @@ events:
       - "C:/Users/Taktix/AppData/Roaming/Qoder/User/globalStorage/github.copilot-chat/copilotCli/lld-link.com"
       - "C:/Users/Taktix/AppData/Roaming/Qoder/User/globalStorage/github.copilot-chat/copilotCli/lld-link.exe"
       - "C:/Users/Taktix/AppData/Roaming/Qoder/User/globalStorage/github.copilot-chat/copilotCli/lld-link"
+      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/lld-link.com"
+      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/lld-link.exe"
+      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/lld-link"
       - "C:/Program Files/Meta Horizon/Support/oculus-runtime/lld-link.com"
       - "C:/Program Files/Meta Horizon/Support/oculus-runtime/lld-link.exe"
       - "C:/Program Files/Meta Horizon/Support/oculus-runtime/lld-link"
@@ -509,9 +516,6 @@ events:
       - "C:/Windows/System32/OpenSSH/lld-link.com"
       - "C:/Windows/System32/OpenSSH/lld-link.exe"
       - "C:/Windows/System32/OpenSSH/lld-link"
-      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/lld-link.com"
-      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/lld-link.exe"
-      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/lld-link"
       - "C:/Program Files/NVIDIA Corporation/NVIDIA app/NvDLISR/lld-link.com"
       - "C:/Program Files/NVIDIA Corporation/NVIDIA app/NvDLISR/lld-link.exe"
       - "C:/Program Files/NVIDIA Corporation/NVIDIA app/NvDLISR/lld-link"
@@ -575,9 +579,9 @@ events:
       - "C:/Users/Taktix/AppData/Local/Microsoft/WindowsApps/lld-link.com"
       - "C:/Users/Taktix/AppData/Local/Microsoft/WindowsApps/lld-link.exe"
       - "C:/Users/Taktix/AppData/Local/Microsoft/WindowsApps/lld-link"
-      - "C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/build/lld-link.com"
-      - "C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/build/lld-link.exe"
-      - "C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/build/lld-link"
+      - "C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/lld-link.com"
+      - "C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/lld-link.exe"
+      - "C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/lld-link"
       - "C:/Users/Taktix/.qoder/extensions/ms-python.debugpy-2025.10.0-win32-x64/bundled/scripts/noConfigScripts/lld-link.com"
       - "C:/Users/Taktix/.qoder/extensions/ms-python.debugpy-2025.10.0-win32-x64/bundled/scripts/noConfigScripts/lld-link.exe"
       - "C:/Users/Taktix/.qoder/extensions/ms-python.debugpy-2025.10.0-win32-x64/bundled/scripts/noConfigScripts/lld-link"
@@ -593,6 +597,9 @@ events:
       - "C:/Users/Taktix/AppData/Local/Programs/Antigravity/bin/lld-link.com"
       - "C:/Users/Taktix/AppData/Local/Programs/Antigravity/bin/lld-link.exe"
       - "C:/Users/Taktix/AppData/Local/Programs/Antigravity/bin/lld-link"
+      - "C:/Users/Taktix/.qoder/extensions/ms-python.debugpy-2025.14.0-win32-x64/bundled/scripts/noConfigScripts/lld-link.com"
+      - "C:/Users/Taktix/.qoder/extensions/ms-python.debugpy-2025.14.0-win32-x64/bundled/scripts/noConfigScripts/lld-link.exe"
+      - "C:/Users/Taktix/.qoder/extensions/ms-python.debugpy-2025.14.0-win32-x64/bundled/scripts/noConfigScripts/lld-link"
     found: false
     search_context:
       ENV{PATH}:
@@ -604,6 +611,7 @@ events:
         - "C:\\Users\\Taktix\\Miniconda3\\bin"
         - "c:\\Users\\Taktix\\AppData\\Roaming\\Qoder\\User\\globalStorage\\github.copilot-chat\\debugCommand"
         - "c:\\Users\\Taktix\\AppData\\Roaming\\Qoder\\User\\globalStorage\\github.copilot-chat\\copilotCli"
+        - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
         - "C:\\Program Files\\Meta Horizon\\Support\\oculus-runtime"
         - "C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.9.10-hotspot\\bin"
         - "C:\\Python314\\Scripts"
@@ -618,7 +626,6 @@ events:
         - "C:\\WINDOWS\\System32\\Wbem"
         - "C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0"
         - "C:\\WINDOWS\\System32\\OpenSSH"
-        - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
         - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA app\\NvDLISR"
         - "C:\\Program Files\\Git\\cmd"
         - "C:\\Program Files\\dotnet"
@@ -695,6 +702,7 @@ events:
         - "C:\\Users\\Taktix\\.dotnet\\tools"
         - "C:\\Users\\Taktix\\AppData\\Local\\Programs\\Microsoft VS Code\\bin"
         - "C:\\Users\\Taktix\\AppData\\Local\\Programs\\Antigravity\\bin"
+        - "c:\\Users\\Taktix\\.qoder\\extensions\\ms-python.debugpy-2025.14.0-win32-x64\\bundled\\scripts\\noConfigScripts"
   -
     kind: "find-v1"
     backtrace:
@@ -724,6 +732,7 @@ events:
       - "C:/Users/Taktix/miniconda3/bin/"
       - "C:/Users/Taktix/AppData/Roaming/Qoder/User/globalStorage/github.copilot-chat/debugCommand/"
       - "C:/Users/Taktix/AppData/Roaming/Qoder/User/globalStorage/github.copilot-chat/copilotCli/"
+      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/"
       - "C:/Program Files/Meta Horizon/Support/oculus-runtime/"
       - "C:/Program Files/Eclipse Adoptium/jdk-21.0.9.10-hotspot/bin/"
       - "C:/Python314/Scripts/"
@@ -738,7 +747,6 @@ events:
       - "C:/Windows/System32/wbem/"
       - "C:/Windows/System32/WindowsPowerShell/v1.0/"
       - "C:/Windows/System32/OpenSSH/"
-      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/"
       - "C:/Program Files/NVIDIA Corporation/NVIDIA app/NvDLISR/"
       - "C:/Program Files/Git/cmd/"
       - "C:/Program Files/dotnet/"
@@ -760,12 +768,13 @@ events:
       - "C:/Users/Taktix/AppData/Local/Programs/Python/Python312/Scripts/"
       - "C:/Users/Taktix/AppData/Local/Programs/Qoder/bin/"
       - "C:/Users/Taktix/AppData/Local/Microsoft/WindowsApps/"
-      - "C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/build/"
+      - "C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/"
       - "C:/Users/Taktix/.qoder/extensions/ms-python.debugpy-2025.10.0-win32-x64/bundled/scripts/noConfigScripts/"
       - "C:/Users/Taktix/AppData/Roaming/npm/"
       - "C:/Users/Taktix/.dotnet/tools/"
       - "C:/Users/Taktix/AppData/Local/Programs/Microsoft VS Code/bin/"
       - "C:/Users/Taktix/AppData/Local/Programs/Antigravity/bin/"
+      - "C:/Users/Taktix/.qoder/extensions/ms-python.debugpy-2025.14.0-win32-x64/bundled/scripts/noConfigScripts/"
     searched_directories:
       - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.38.33130/bin/Hostx64/x64/link.com"
     found: "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.38.33130/bin/Hostx64/x64/link.exe"
@@ -779,6 +788,7 @@ events:
         - "C:\\Users\\Taktix\\Miniconda3\\bin"
         - "c:\\Users\\Taktix\\AppData\\Roaming\\Qoder\\User\\globalStorage\\github.copilot-chat\\debugCommand"
         - "c:\\Users\\Taktix\\AppData\\Roaming\\Qoder\\User\\globalStorage\\github.copilot-chat\\copilotCli"
+        - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
         - "C:\\Program Files\\Meta Horizon\\Support\\oculus-runtime"
         - "C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.9.10-hotspot\\bin"
         - "C:\\Python314\\Scripts"
@@ -793,7 +803,6 @@ events:
         - "C:\\WINDOWS\\System32\\Wbem"
         - "C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0"
         - "C:\\WINDOWS\\System32\\OpenSSH"
-        - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
         - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA app\\NvDLISR"
         - "C:\\Program Files\\Git\\cmd"
         - "C:\\Program Files\\dotnet"
@@ -870,6 +879,7 @@ events:
         - "C:\\Users\\Taktix\\.dotnet\\tools"
         - "C:\\Users\\Taktix\\AppData\\Local\\Programs\\Microsoft VS Code\\bin"
         - "C:\\Users\\Taktix\\AppData\\Local\\Programs\\Antigravity\\bin"
+        - "c:\\Users\\Taktix\\.qoder\\extensions\\ms-python.debugpy-2025.14.0-win32-x64\\bundled\\scripts\\noConfigScripts"
   -
     kind: "find-v1"
     backtrace:
@@ -899,6 +909,7 @@ events:
       - "C:/Users/Taktix/miniconda3/bin/"
       - "C:/Users/Taktix/AppData/Roaming/Qoder/User/globalStorage/github.copilot-chat/debugCommand/"
       - "C:/Users/Taktix/AppData/Roaming/Qoder/User/globalStorage/github.copilot-chat/copilotCli/"
+      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/"
       - "C:/Program Files/Meta Horizon/Support/oculus-runtime/"
       - "C:/Program Files/Eclipse Adoptium/jdk-21.0.9.10-hotspot/bin/"
       - "C:/Python314/Scripts/"
@@ -913,7 +924,6 @@ events:
       - "C:/Windows/System32/wbem/"
       - "C:/Windows/System32/WindowsPowerShell/v1.0/"
       - "C:/Windows/System32/OpenSSH/"
-      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/"
       - "C:/Program Files/NVIDIA Corporation/NVIDIA app/NvDLISR/"
       - "C:/Program Files/Git/cmd/"
       - "C:/Program Files/dotnet/"
@@ -935,12 +945,13 @@ events:
       - "C:/Users/Taktix/AppData/Local/Programs/Python/Python312/Scripts/"
       - "C:/Users/Taktix/AppData/Local/Programs/Qoder/bin/"
       - "C:/Users/Taktix/AppData/Local/Microsoft/WindowsApps/"
-      - "C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/build/"
+      - "C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/"
       - "C:/Users/Taktix/.qoder/extensions/ms-python.debugpy-2025.10.0-win32-x64/bundled/scripts/noConfigScripts/"
       - "C:/Users/Taktix/AppData/Roaming/npm/"
       - "C:/Users/Taktix/.dotnet/tools/"
       - "C:/Users/Taktix/AppData/Local/Programs/Microsoft VS Code/bin/"
       - "C:/Users/Taktix/AppData/Local/Programs/Antigravity/bin/"
+      - "C:/Users/Taktix/.qoder/extensions/ms-python.debugpy-2025.14.0-win32-x64/bundled/scripts/noConfigScripts/"
     searched_directories:
       - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.38.33130/bin/Hostx64/x64/mt.com"
       - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.38.33130/bin/Hostx64/x64/mt.exe"
@@ -969,6 +980,9 @@ events:
       - "C:/Users/Taktix/AppData/Roaming/Qoder/User/globalStorage/github.copilot-chat/copilotCli/mt.com"
       - "C:/Users/Taktix/AppData/Roaming/Qoder/User/globalStorage/github.copilot-chat/copilotCli/mt.exe"
       - "C:/Users/Taktix/AppData/Roaming/Qoder/User/globalStorage/github.copilot-chat/copilotCli/mt"
+      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/mt.com"
+      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/mt.exe"
+      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/mt"
       - "C:/Program Files/Meta Horizon/Support/oculus-runtime/mt.com"
       - "C:/Program Files/Meta Horizon/Support/oculus-runtime/mt.exe"
       - "C:/Program Files/Meta Horizon/Support/oculus-runtime/mt"
@@ -1011,9 +1025,6 @@ events:
       - "C:/Windows/System32/OpenSSH/mt.com"
       - "C:/Windows/System32/OpenSSH/mt.exe"
       - "C:/Windows/System32/OpenSSH/mt"
-      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/mt.com"
-      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/mt.exe"
-      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/mt"
       - "C:/Program Files/NVIDIA Corporation/NVIDIA app/NvDLISR/mt.com"
       - "C:/Program Files/NVIDIA Corporation/NVIDIA app/NvDLISR/mt.exe"
       - "C:/Program Files/NVIDIA Corporation/NVIDIA app/NvDLISR/mt"
@@ -1077,9 +1088,9 @@ events:
       - "C:/Users/Taktix/AppData/Local/Microsoft/WindowsApps/mt.com"
       - "C:/Users/Taktix/AppData/Local/Microsoft/WindowsApps/mt.exe"
       - "C:/Users/Taktix/AppData/Local/Microsoft/WindowsApps/mt"
-      - "C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/build/mt.com"
-      - "C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/build/mt.exe"
-      - "C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/build/mt"
+      - "C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/mt.com"
+      - "C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/mt.exe"
+      - "C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/mt"
       - "C:/Users/Taktix/.qoder/extensions/ms-python.debugpy-2025.10.0-win32-x64/bundled/scripts/noConfigScripts/mt.com"
       - "C:/Users/Taktix/.qoder/extensions/ms-python.debugpy-2025.10.0-win32-x64/bundled/scripts/noConfigScripts/mt.exe"
       - "C:/Users/Taktix/.qoder/extensions/ms-python.debugpy-2025.10.0-win32-x64/bundled/scripts/noConfigScripts/mt"
@@ -1095,6 +1106,9 @@ events:
       - "C:/Users/Taktix/AppData/Local/Programs/Antigravity/bin/mt.com"
       - "C:/Users/Taktix/AppData/Local/Programs/Antigravity/bin/mt.exe"
       - "C:/Users/Taktix/AppData/Local/Programs/Antigravity/bin/mt"
+      - "C:/Users/Taktix/.qoder/extensions/ms-python.debugpy-2025.14.0-win32-x64/bundled/scripts/noConfigScripts/mt.com"
+      - "C:/Users/Taktix/.qoder/extensions/ms-python.debugpy-2025.14.0-win32-x64/bundled/scripts/noConfigScripts/mt.exe"
+      - "C:/Users/Taktix/.qoder/extensions/ms-python.debugpy-2025.14.0-win32-x64/bundled/scripts/noConfigScripts/mt"
     found: false
     search_context:
       ENV{PATH}:
@@ -1106,6 +1120,7 @@ events:
         - "C:\\Users\\Taktix\\Miniconda3\\bin"
         - "c:\\Users\\Taktix\\AppData\\Roaming\\Qoder\\User\\globalStorage\\github.copilot-chat\\debugCommand"
         - "c:\\Users\\Taktix\\AppData\\Roaming\\Qoder\\User\\globalStorage\\github.copilot-chat\\copilotCli"
+        - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
         - "C:\\Program Files\\Meta Horizon\\Support\\oculus-runtime"
         - "C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.9.10-hotspot\\bin"
         - "C:\\Python314\\Scripts"
@@ -1120,7 +1135,6 @@ events:
         - "C:\\WINDOWS\\System32\\Wbem"
         - "C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0"
         - "C:\\WINDOWS\\System32\\OpenSSH"
-        - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
         - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA app\\NvDLISR"
         - "C:\\Program Files\\Git\\cmd"
         - "C:\\Program Files\\dotnet"
@@ -1197,6 +1211,7 @@ events:
         - "C:\\Users\\Taktix\\.dotnet\\tools"
         - "C:\\Users\\Taktix\\AppData\\Local\\Programs\\Microsoft VS Code\\bin"
         - "C:\\Users\\Taktix\\AppData\\Local\\Programs\\Antigravity\\bin"
+        - "c:\\Users\\Taktix\\.qoder\\extensions\\ms-python.debugpy-2025.14.0-win32-x64\\bundled\\scripts\\noConfigScripts"
   -
     kind: "find-v1"
     backtrace:
@@ -1226,6 +1241,7 @@ events:
       - "C:/Users/Taktix/miniconda3/bin/"
       - "C:/Users/Taktix/AppData/Roaming/Qoder/User/globalStorage/github.copilot-chat/debugCommand/"
       - "C:/Users/Taktix/AppData/Roaming/Qoder/User/globalStorage/github.copilot-chat/copilotCli/"
+      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/"
       - "C:/Program Files/Meta Horizon/Support/oculus-runtime/"
       - "C:/Program Files/Eclipse Adoptium/jdk-21.0.9.10-hotspot/bin/"
       - "C:/Python314/Scripts/"
@@ -1240,7 +1256,6 @@ events:
       - "C:/Windows/System32/wbem/"
       - "C:/Windows/System32/WindowsPowerShell/v1.0/"
       - "C:/Windows/System32/OpenSSH/"
-      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/"
       - "C:/Program Files/NVIDIA Corporation/NVIDIA app/NvDLISR/"
       - "C:/Program Files/Git/cmd/"
       - "C:/Program Files/dotnet/"
@@ -1262,12 +1277,13 @@ events:
       - "C:/Users/Taktix/AppData/Local/Programs/Python/Python312/Scripts/"
       - "C:/Users/Taktix/AppData/Local/Programs/Qoder/bin/"
       - "C:/Users/Taktix/AppData/Local/Microsoft/WindowsApps/"
-      - "C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/build/"
+      - "C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/"
       - "C:/Users/Taktix/.qoder/extensions/ms-python.debugpy-2025.10.0-win32-x64/bundled/scripts/noConfigScripts/"
       - "C:/Users/Taktix/AppData/Roaming/npm/"
       - "C:/Users/Taktix/.dotnet/tools/"
       - "C:/Users/Taktix/AppData/Local/Programs/Microsoft VS Code/bin/"
       - "C:/Users/Taktix/AppData/Local/Programs/Antigravity/bin/"
+      - "C:/Users/Taktix/.qoder/extensions/ms-python.debugpy-2025.14.0-win32-x64/bundled/scripts/noConfigScripts/"
     searched_directories:
       - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.38.33130/bin/Hostx64/x64/lib.com"
     found: "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.38.33130/bin/Hostx64/x64/lib.exe"
@@ -1281,6 +1297,7 @@ events:
         - "C:\\Users\\Taktix\\Miniconda3\\bin"
         - "c:\\Users\\Taktix\\AppData\\Roaming\\Qoder\\User\\globalStorage\\github.copilot-chat\\debugCommand"
         - "c:\\Users\\Taktix\\AppData\\Roaming\\Qoder\\User\\globalStorage\\github.copilot-chat\\copilotCli"
+        - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
         - "C:\\Program Files\\Meta Horizon\\Support\\oculus-runtime"
         - "C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.9.10-hotspot\\bin"
         - "C:\\Python314\\Scripts"
@@ -1295,7 +1312,6 @@ events:
         - "C:\\WINDOWS\\System32\\Wbem"
         - "C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0"
         - "C:\\WINDOWS\\System32\\OpenSSH"
-        - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
         - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA app\\NvDLISR"
         - "C:\\Program Files\\Git\\cmd"
         - "C:\\Program Files\\dotnet"
@@ -1372,6 +1388,7 @@ events:
         - "C:\\Users\\Taktix\\.dotnet\\tools"
         - "C:\\Users\\Taktix\\AppData\\Local\\Programs\\Microsoft VS Code\\bin"
         - "C:\\Users\\Taktix\\AppData\\Local\\Programs\\Antigravity\\bin"
+        - "c:\\Users\\Taktix\\.qoder\\extensions\\ms-python.debugpy-2025.14.0-win32-x64\\bundled\\scripts\\noConfigScripts"
   -
     kind: "find-v1"
     backtrace:
@@ -1403,6 +1420,7 @@ events:
       - "C:/Users/Taktix/miniconda3/bin/"
       - "C:/Users/Taktix/AppData/Roaming/Qoder/User/globalStorage/github.copilot-chat/debugCommand/"
       - "C:/Users/Taktix/AppData/Roaming/Qoder/User/globalStorage/github.copilot-chat/copilotCli/"
+      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/"
       - "C:/Program Files/Meta Horizon/Support/oculus-runtime/"
       - "C:/Program Files/Eclipse Adoptium/jdk-21.0.9.10-hotspot/bin/"
       - "C:/Python314/Scripts/"
@@ -1417,7 +1435,6 @@ events:
       - "C:/Windows/System32/wbem/"
       - "C:/Windows/System32/WindowsPowerShell/v1.0/"
       - "C:/Windows/System32/OpenSSH/"
-      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/"
       - "C:/Program Files/NVIDIA Corporation/NVIDIA app/NvDLISR/"
       - "C:/Program Files/Git/cmd/"
       - "C:/Program Files/dotnet/"
@@ -1439,12 +1456,13 @@ events:
       - "C:/Users/Taktix/AppData/Local/Programs/Python/Python312/Scripts/"
       - "C:/Users/Taktix/AppData/Local/Programs/Qoder/bin/"
       - "C:/Users/Taktix/AppData/Local/Microsoft/WindowsApps/"
-      - "C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/build/"
+      - "C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/"
       - "C:/Users/Taktix/.qoder/extensions/ms-python.debugpy-2025.10.0-win32-x64/bundled/scripts/noConfigScripts/"
       - "C:/Users/Taktix/AppData/Roaming/npm/"
       - "C:/Users/Taktix/.dotnet/tools/"
       - "C:/Users/Taktix/AppData/Local/Programs/Microsoft VS Code/bin/"
       - "C:/Users/Taktix/AppData/Local/Programs/Antigravity/bin/"
+      - "C:/Users/Taktix/.qoder/extensions/ms-python.debugpy-2025.14.0-win32-x64/bundled/scripts/noConfigScripts/"
       - "C:/Program Files/bin/"
       - "C:/Program Files/sbin/"
       - "C:/Program Files/"
@@ -1454,9 +1472,9 @@ events:
       - "D:/Program Files/CMake/bin/"
       - "D:/Program Files/CMake/sbin/"
       - "D:/Program Files/CMake/"
-      - "C:/Program Files/GeneticsGameEngine/bin/"
-      - "C:/Program Files/GeneticsGameEngine/sbin/"
-      - "C:/Program Files/GeneticsGameEngine/"
+      - "C:/Program Files (x86)/GeneticsGameEngine/bin/"
+      - "C:/Program Files (x86)/GeneticsGameEngine/sbin/"
+      - "C:/Program Files (x86)/GeneticsGameEngine/"
     searched_directories:
       - "C:/Users/Taktix/miniconda3/rc.com"
       - "C:/Users/Taktix/miniconda3/rc.exe"
@@ -1482,6 +1500,9 @@ events:
       - "C:/Users/Taktix/AppData/Roaming/Qoder/User/globalStorage/github.copilot-chat/copilotCli/rc.com"
       - "C:/Users/Taktix/AppData/Roaming/Qoder/User/globalStorage/github.copilot-chat/copilotCli/rc.exe"
       - "C:/Users/Taktix/AppData/Roaming/Qoder/User/globalStorage/github.copilot-chat/copilotCli/rc"
+      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/rc.com"
+      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/rc.exe"
+      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/rc"
       - "C:/Program Files/Meta Horizon/Support/oculus-runtime/rc.com"
       - "C:/Program Files/Meta Horizon/Support/oculus-runtime/rc.exe"
       - "C:/Program Files/Meta Horizon/Support/oculus-runtime/rc"
@@ -1524,9 +1545,6 @@ events:
       - "C:/Windows/System32/OpenSSH/rc.com"
       - "C:/Windows/System32/OpenSSH/rc.exe"
       - "C:/Windows/System32/OpenSSH/rc"
-      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/rc.com"
-      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/rc.exe"
-      - "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/rc"
       - "C:/Program Files/NVIDIA Corporation/NVIDIA app/NvDLISR/rc.com"
       - "C:/Program Files/NVIDIA Corporation/NVIDIA app/NvDLISR/rc.exe"
       - "C:/Program Files/NVIDIA Corporation/NVIDIA app/NvDLISR/rc"
@@ -1590,9 +1608,9 @@ events:
       - "C:/Users/Taktix/AppData/Local/Microsoft/WindowsApps/rc.com"
       - "C:/Users/Taktix/AppData/Local/Microsoft/WindowsApps/rc.exe"
       - "C:/Users/Taktix/AppData/Local/Microsoft/WindowsApps/rc"
-      - "C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/build/rc.com"
-      - "C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/build/rc.exe"
-      - "C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/build/rc"
+      - "C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/rc.com"
+      - "C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/rc.exe"
+      - "C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/rc"
       - "C:/Users/Taktix/.qoder/extensions/ms-python.debugpy-2025.10.0-win32-x64/bundled/scripts/noConfigScripts/rc.com"
       - "C:/Users/Taktix/.qoder/extensions/ms-python.debugpy-2025.10.0-win32-x64/bundled/scripts/noConfigScripts/rc.exe"
       - "C:/Users/Taktix/.qoder/extensions/ms-python.debugpy-2025.10.0-win32-x64/bundled/scripts/noConfigScripts/rc"
@@ -1608,6 +1626,9 @@ events:
       - "C:/Users/Taktix/AppData/Local/Programs/Antigravity/bin/rc.com"
       - "C:/Users/Taktix/AppData/Local/Programs/Antigravity/bin/rc.exe"
       - "C:/Users/Taktix/AppData/Local/Programs/Antigravity/bin/rc"
+      - "C:/Users/Taktix/.qoder/extensions/ms-python.debugpy-2025.14.0-win32-x64/bundled/scripts/noConfigScripts/rc.com"
+      - "C:/Users/Taktix/.qoder/extensions/ms-python.debugpy-2025.14.0-win32-x64/bundled/scripts/noConfigScripts/rc.exe"
+      - "C:/Users/Taktix/.qoder/extensions/ms-python.debugpy-2025.14.0-win32-x64/bundled/scripts/noConfigScripts/rc"
       - "C:/Program Files/bin/rc.com"
       - "C:/Program Files/bin/rc.exe"
       - "C:/Program Files/bin/rc"
@@ -1635,15 +1656,15 @@ events:
       - "D:/Program Files/CMake/rc.com"
       - "D:/Program Files/CMake/rc.exe"
       - "D:/Program Files/CMake/rc"
-      - "C:/Program Files/GeneticsGameEngine/bin/rc.com"
-      - "C:/Program Files/GeneticsGameEngine/bin/rc.exe"
-      - "C:/Program Files/GeneticsGameEngine/bin/rc"
-      - "C:/Program Files/GeneticsGameEngine/sbin/rc.com"
-      - "C:/Program Files/GeneticsGameEngine/sbin/rc.exe"
-      - "C:/Program Files/GeneticsGameEngine/sbin/rc"
-      - "C:/Program Files/GeneticsGameEngine/rc.com"
-      - "C:/Program Files/GeneticsGameEngine/rc.exe"
-      - "C:/Program Files/GeneticsGameEngine/rc"
+      - "C:/Program Files (x86)/GeneticsGameEngine/bin/rc.com"
+      - "C:/Program Files (x86)/GeneticsGameEngine/bin/rc.exe"
+      - "C:/Program Files (x86)/GeneticsGameEngine/bin/rc"
+      - "C:/Program Files (x86)/GeneticsGameEngine/sbin/rc.com"
+      - "C:/Program Files (x86)/GeneticsGameEngine/sbin/rc.exe"
+      - "C:/Program Files (x86)/GeneticsGameEngine/sbin/rc"
+      - "C:/Program Files (x86)/GeneticsGameEngine/rc.com"
+      - "C:/Program Files (x86)/GeneticsGameEngine/rc.exe"
+      - "C:/Program Files (x86)/GeneticsGameEngine/rc"
     found: false
     search_context:
       ENV{PATH}:
@@ -1655,6 +1676,7 @@ events:
         - "C:\\Users\\Taktix\\Miniconda3\\bin"
         - "c:\\Users\\Taktix\\AppData\\Roaming\\Qoder\\User\\globalStorage\\github.copilot-chat\\debugCommand"
         - "c:\\Users\\Taktix\\AppData\\Roaming\\Qoder\\User\\globalStorage\\github.copilot-chat\\copilotCli"
+        - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
         - "C:\\Program Files\\Meta Horizon\\Support\\oculus-runtime"
         - "C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.9.10-hotspot\\bin"
         - "C:\\Python314\\Scripts"
@@ -1669,7 +1691,6 @@ events:
         - "C:\\WINDOWS\\System32\\Wbem"
         - "C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0"
         - "C:\\WINDOWS\\System32\\OpenSSH"
-        - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
         - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA app\\NvDLISR"
         - "C:\\Program Files\\Git\\cmd"
         - "C:\\Program Files\\dotnet"
@@ -1746,12 +1767,13 @@ events:
         - "C:\\Users\\Taktix\\.dotnet\\tools"
         - "C:\\Users\\Taktix\\AppData\\Local\\Programs\\Microsoft VS Code\\bin"
         - "C:\\Users\\Taktix\\AppData\\Local\\Programs\\Antigravity\\bin"
-      CMAKE_INSTALL_PREFIX: "C:/Program Files/GeneticsGameEngine"
+        - "c:\\Users\\Taktix\\.qoder\\extensions\\ms-python.debugpy-2025.14.0-win32-x64\\bundled\\scripts\\noConfigScripts"
+      CMAKE_INSTALL_PREFIX: "C:/Program Files (x86)/GeneticsGameEngine"
       CMAKE_SYSTEM_PREFIX_PATH:
         - "C:/Program Files"
         - "C:/Program Files (x86)"
         - "D:/Program Files/CMake"
-        - "C:/Program Files/GeneticsGameEngine"
+        - "C:/Program Files (x86)/GeneticsGameEngine"
   -
     kind: "try_compile-v1"
     backtrace:
@@ -1761,8 +1783,8 @@ events:
     checks:
       - "Detecting CXX compiler ABI info"
     directories:
-      source: "C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/build/CMakeFiles/CMakeScratch/TryCompile-wisfu2"
-      binary: "C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/build/CMakeFiles/CMakeScratch/TryCompile-wisfu2"
+      source: "C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/build/CMakeFiles/CMakeScratch/TryCompile-26sp7r"
+      binary: "C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/build/CMakeFiles/CMakeScratch/TryCompile-26sp7r"
     cmakeVariables:
       CMAKE_CXX_FLAGS: "/DWIN32 /D_WINDOWS /EHsc"
       CMAKE_CXX_FLAGS_DEBUG: "/Ob0 /Od /RTC1"
@@ -1773,39 +1795,39 @@ events:
       variable: "CMAKE_CXX_ABI_COMPILED"
       cached: true
       stdout: |
-        Change Dir: 'C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/build/CMakeFiles/CMakeScratch/TryCompile-wisfu2'
+        Change Dir: 'C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/build/CMakeFiles/CMakeScratch/TryCompile-26sp7r'
         
-        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_255fb.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_34b99.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
         MSBuild version 17.13.19+0d9f5a35a for .NET Framework
-        Build started 5/1/2026 11:42:07 AM.
+        Build started 5/8/2026 9:01:08 PM.
         
-        Project "C:\\Users\\Taktix\\Desktop\\CodingAI\\AiProjects\\3dGenetics\\GeneticsGameEngine\\build\\CMakeFiles\\CMakeScratch\\TryCompile-wisfu2\\cmTC_255fb.vcxproj" on node 1 (default targets).
+        Project "C:\\Users\\Taktix\\Desktop\\CodingAI\\AiProjects\\3dGenetics\\GeneticsGameEngine\\build\\CMakeFiles\\CMakeScratch\\TryCompile-26sp7r\\cmTC_34b99.vcxproj" on node 1 (default targets).
         PrepareForBuild:
           Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
-          Creating directory "C:\\Users\\Taktix\\Desktop\\CodingAI\\AiProjects\\3dGenetics\\GeneticsGameEngine\\build\\CMakeFiles\\CMakeScratch\\TryCompile-wisfu2\\Debug\\".
-          Creating directory "cmTC_255fb.dir\\Debug\\cmTC_255fb.tlog\\".
+          Creating directory "C:\\Users\\Taktix\\Desktop\\CodingAI\\AiProjects\\3dGenetics\\GeneticsGameEngine\\build\\CMakeFiles\\CMakeScratch\\TryCompile-26sp7r\\Debug\\".
+          Creating directory "cmTC_34b99.dir\\Debug\\cmTC_34b99.tlog\\".
         InitializeBuildStatus:
-          Creating "cmTC_255fb.dir\\Debug\\cmTC_255fb.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
-          Touching "cmTC_255fb.dir\\Debug\\cmTC_255fb.tlog\\unsuccessfulbuild".
+          Creating "cmTC_34b99.dir\\Debug\\cmTC_34b99.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+          Touching "cmTC_34b99.dir\\Debug\\cmTC_34b99.tlog\\unsuccessfulbuild".
         ClCompile:
-          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.38.33130\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /Fo"cmTC_255fb.dir\\Debug\\\\" /Fd"cmTC_255fb.dir\\Debug\\vc143.pdb" /external:W1 /TP /errorReport:queue "D:\\Program Files\\CMake\\share\\cmake-4.3\\Modules\\CMakeCXXCompilerABI.cpp"
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.38.33130\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /Fo"cmTC_34b99.dir\\Debug\\\\" /Fd"cmTC_34b99.dir\\Debug\\vc143.pdb" /external:W1 /TP /errorReport:queue "D:\\Program Files\\CMake\\share\\cmake-4.3\\Modules\\CMakeCXXCompilerABI.cpp"
           Microsoft (R) C/C++ Optimizing Compiler Version 19.38.33145 for x64
           Copyright (C) Microsoft Corporation.  All rights reserved.
-          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /Fo"cmTC_255fb.dir\\Debug\\\\" /Fd"cmTC_255fb.dir\\Debug\\vc143.pdb" /external:W1 /TP /errorReport:queue "D:\\Program Files\\CMake\\share\\cmake-4.3\\Modules\\CMakeCXXCompilerABI.cpp"
+          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /Fo"cmTC_34b99.dir\\Debug\\\\" /Fd"cmTC_34b99.dir\\Debug\\vc143.pdb" /external:W1 /TP /errorReport:queue "D:\\Program Files\\CMake\\share\\cmake-4.3\\Modules\\CMakeCXXCompilerABI.cpp"
           CMakeCXXCompilerABI.cpp
         Link:
-          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.38.33130\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Users\\Taktix\\Desktop\\CodingAI\\AiProjects\\3dGenetics\\GeneticsGameEngine\\build\\CMakeFiles\\CMakeScratch\\TryCompile-wisfu2\\Debug\\cmTC_255fb.exe" /INCREMENTAL /ILK:"cmTC_255fb.dir\\Debug\\cmTC_255fb.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/build/CMakeFiles/CMakeScratch/TryCompile-wisfu2/Debug/cmTC_255fb.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/build/CMakeFiles/CMakeScratch/TryCompile-wisfu2/Debug/cmTC_255fb.lib" /MACHINE:X64  /machine:x64 cmTC_255fb.dir\\Debug\\CMakeCXXCompilerABI.obj
-          cmTC_255fb.vcxproj -> C:\\Users\\Taktix\\Desktop\\CodingAI\\AiProjects\\3dGenetics\\GeneticsGameEngine\\build\\CMakeFiles\\CMakeScratch\\TryCompile-wisfu2\\Debug\\cmTC_255fb.exe
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.38.33130\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Users\\Taktix\\Desktop\\CodingAI\\AiProjects\\3dGenetics\\GeneticsGameEngine\\build\\CMakeFiles\\CMakeScratch\\TryCompile-26sp7r\\Debug\\cmTC_34b99.exe" /INCREMENTAL /ILK:"cmTC_34b99.dir\\Debug\\cmTC_34b99.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/build/CMakeFiles/CMakeScratch/TryCompile-26sp7r/Debug/cmTC_34b99.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Users/Taktix/Desktop/CodingAI/AiProjects/3dGenetics/GeneticsGameEngine/build/CMakeFiles/CMakeScratch/TryCompile-26sp7r/Debug/cmTC_34b99.lib" /MACHINE:X64  /machine:x64 cmTC_34b99.dir\\Debug\\CMakeCXXCompilerABI.obj
+          cmTC_34b99.vcxproj -> C:\\Users\\Taktix\\Desktop\\CodingAI\\AiProjects\\3dGenetics\\GeneticsGameEngine\\build\\CMakeFiles\\CMakeScratch\\TryCompile-26sp7r\\Debug\\cmTC_34b99.exe
         FinalizeBuildStatus:
-          Deleting file "cmTC_255fb.dir\\Debug\\cmTC_255fb.tlog\\unsuccessfulbuild".
-          Touching "cmTC_255fb.dir\\Debug\\cmTC_255fb.tlog\\cmTC_255fb.lastbuildstate".
-        Done Building Project "C:\\Users\\Taktix\\Desktop\\CodingAI\\AiProjects\\3dGenetics\\GeneticsGameEngine\\build\\CMakeFiles\\CMakeScratch\\TryCompile-wisfu2\\cmTC_255fb.vcxproj" (default targets).
+          Deleting file "cmTC_34b99.dir\\Debug\\cmTC_34b99.tlog\\unsuccessfulbuild".
+          Touching "cmTC_34b99.dir\\Debug\\cmTC_34b99.tlog\\cmTC_34b99.lastbuildstate".
+        Done Building Project "C:\\Users\\Taktix\\Desktop\\CodingAI\\AiProjects\\3dGenetics\\GeneticsGameEngine\\build\\CMakeFiles\\CMakeScratch\\TryCompile-26sp7r\\cmTC_34b99.vcxproj" (default targets).
         
         Build succeeded.
             0 Warning(s)
             0 Error(s)
         
-        Time Elapsed 00:00:00.79
+        Time Elapsed 00:00:01.13
         
       exitCode: 0
   -

@@ -1,4 +1,13 @@
-// PBR Vertex Shader with proper lighting support
+// PBR Vertex Shader with per-entity world transforms
+// ENTITY ARCHITECTURE: Meshes are in LOCAL SPACE, world matrix applied here
+
+// Per-object constant buffer (register b1) - world matrix for this entity
+cbuffer ObjectConstants : register(b1)
+{
+    float4x4 worldMatrix;
+};
+
+// Per-frame constant buffer (register b0) - camera view/projection
 cbuffer CameraConstants : register(b0)
 {
     float4x4 viewMatrix;
@@ -24,16 +33,21 @@ VS_OUTPUT main(VS_INPUT input)
 {
     VS_OUTPUT output;
     
-    // Transform to world space (identity matrix for now - creatures at world origin)
-    float4 worldPos = float4(input.position.xyz, 1.0f);
+    // Transform from LOCAL SPACE to WORLD SPACE using per-object matrix
+    // Use column-vector multiplication: mul(matrix, vector)
+    float4 localPos = float4(input.position.xyz, 1.0f);
+    float4 worldPos = mul(worldMatrix, localPos);
     output.worldPosition = worldPos.xyz;
     
-    // Transform to clip space
+    // Transform from WORLD SPACE to CLIP SPACE
     float4 viewPos = mul(viewMatrix, worldPos);
     output.position = mul(projectionMatrix, viewPos);
     
-    // Transform normal to world space (no rotation applied yet)
-    output.worldNormal = normalize(input.normal);
+    // Transform normal to world space (apply world matrix rotation)
+    // Use column-vector multiplication for normals too
+    float4 localNormal = float4(input.normal, 0.0f);
+    float4 worldNormal = mul(worldMatrix, localNormal);
+    output.worldNormal = normalize(worldNormal.xyz);
     
     // Pass through base color (creature color from genetics)
     output.baseColor = input.color;

@@ -197,7 +197,35 @@ void ScalarFieldGenerator::GenerateFieldFromSkeleton(
     
     const auto& bones = skeleton.GetBones();
     
+    // DEBUG: Print first 3 bone world positions to verify transforms
+    printf("  [DEBUG BoneTransforms] Total bones: %zu\n", bones.size());
+    for (size_t i = 0; i < bones.size() && i < 3; i++)
+    {
+        DirectX::XMFLOAT3 worldPos = {
+            bones[i].worldTransform._41,
+            bones[i].worldTransform._42,
+            bones[i].worldTransform._43
+        };
+        printf("  [DEBUG BoneTransforms] Bone %zu: %s, localPos=(%.2f, %.2f, %.2f), worldPos=(%.2f, %.2f, %.2f)\n",
+               i, bones[i].name.c_str(),
+               bones[i].localPosition.x, bones[i].localPosition.y, bones[i].localPosition.z,
+               worldPos.x, worldPos.y, worldPos.z);
+    }
+    
+    // Calculate adaptive scaling factor based on bone count
+    // More bones = more density summation = need smaller individual contributions
+    // Target: keep maximum density around 1.0-2.0 for proper isosurface extraction
+    float boneCount = static_cast<float>(bones.size());
+    float adaptiveScale = 1.0f / (boneCount * 1.5f); // Balanced scaling
+    
+    printf("  [DEBUG ScalarField] Bone count: %zu, Adaptive scale: %.3f\n", bones.size(), adaptiveScale);
+    
     // Fill scalar field by computing distance to nearest bone at each voxel
+    float minDensity = 999.0f;
+    float maxDensity = -999.0f;
+    int aboveIsovalue = 0;
+    int belowIsovalue = 0;
+    
     for (int z = 0; z < sizeZ; ++z) {
         for (int y = 0; y < sizeY; ++y) {
             for (int x = 0; x < sizeX; ++x) {
@@ -212,21 +240,33 @@ void ScalarFieldGenerator::GenerateFieldFromSkeleton(
                 float density = 0.0f;
                 for (const auto& bone : bones)
                 {
-                    float boneDensity = ComputeBoneDensity(voxelPos, bone);
+                    float boneDensity = ComputeBoneDensity(voxelPos, bone, adaptiveScale);
                     density += boneDensity;
                 }
+                
+                // Track density range
+                minDensity = std::min(minDensity, density);
+                maxDensity = std::max(maxDensity, density);
+                if (density > 0.5f) aboveIsovalue++;
+                else belowIsovalue++;
                 
                 // Store in scalar field
                 grid.SetScalarField(x, y, z, density);
             }
         }
     }
+    
+    // Debug output
+    printf("  [DEBUG ScalarField] Density range: [%.3f, %.3f]\n", minDensity, maxDensity);
+    printf("  [DEBUG ScalarField] Voxels above isovalue(0.5): %d, below: %d (total: %d)\n", 
+           aboveIsovalue, belowIsovalue, sizeX * sizeY * sizeZ);
 }
 
 // Compute density contribution from a single bone
 float ScalarFieldGenerator::ComputeBoneDensity(
     const DirectX::XMFLOAT3& voxelPos,
-    const Engine::Animation::Bone& bone) const
+    const Engine::Animation::Bone& bone,
+    float adaptiveScale) const
 {
     // Get bone's world-space position from transform matrix
     DirectX::XMFLOAT3 bonePos = {
@@ -235,8 +275,8 @@ float ScalarFieldGenerator::ComputeBoneDensity(
         bone.worldTransform._43
     };
     
-    // Bone thickness (average of width and height)
-    float boneRadius = (bone.boneLength.y + bone.boneLength.z) * 0.5f;
+    // Bone thickness (maximum dimension for proper 3D coverage)
+    float boneRadius = std::max({bone.boneLength.x, bone.boneLength.y, bone.boneLength.z}) * 2.0f;
     
     // Bone length direction (Z axis in local space, transformed to world)
     DirectX::XMFLOAT3 boneDir = {
@@ -246,14 +286,16 @@ float ScalarFieldGenerator::ComputeBoneDensity(
     };
     
     // Compute bone endpoint
+    // Use the MAXIMUM dimension as the bone length (direction of growth)
+    float boneLen = std::max({bone.boneLength.x, bone.boneLength.y, bone.boneLength.z});
     DirectX::XMFLOAT3 boneEnd = {
-        bonePos.x + boneDir.x * bone.boneLength.x,
-        bonePos.y + boneDir.y * bone.boneLength.x,
-        bonePos.z + boneDir.z * bone.boneLength.x
+        bonePos.x + boneDir.x * boneLen,
+        bonePos.y + boneDir.y * boneLen,
+        bonePos.z + boneDir.z * boneLen
     };
     
     // Use cylinder SDF for bone density
-    return CylinderSDF(voxelPos, bonePos, boneEnd, boneRadius);
+    return CylinderSDF(voxelPos, bonePos, boneEnd, boneRadius, adaptiveScale);
 }
 
 // Cylinder signed distance function
@@ -261,7 +303,8 @@ float ScalarFieldGenerator::CylinderSDF(
     const DirectX::XMFLOAT3& pos,
     const DirectX::XMFLOAT3& boneStart,
     const DirectX::XMFLOAT3& boneEnd,
-    float radius) const
+    float radius,
+    float adaptiveScale) const
 {
     // Cylinder axis
     DirectX::XMFLOAT3 axis = {
@@ -308,8 +351,13 @@ float ScalarFieldGenerator::CylinderSDF(
     float distance = std::sqrt(distVec.x * distVec.x + distVec.y * distVec.y + distVec.z * distVec.z);
     
     // Density falls off with distance (metaball-style)
-    float falloff = radius * 2.0f; // Influence radius
-    return std::max(0.0f, 1.0f - (distance / falloff));
+    // Use very large falloff to ensure proper 3D volume creation
+    float falloff = radius * 6.0f; // Large influence radius for volumetric blending
+    float density = std::max(0.0f, 1.0f - (distance / falloff));
+    
+    // Apply adaptive scaling to ensure density range crosses the 0.5 isovalue
+    // More bones = smaller individual contributions needed
+    return density * adaptiveScale;
 }
 
 } // namespace Generation

@@ -1,5 +1,23 @@
 // PBR Pixel Shader - Cook-Torrance BRDF
-cbuffer LightConstants : register(b2)
+// Updated to match new root signature register layout
+
+// Material constants moved to b2 to match new root signature
+cbuffer MaterialConstants : register(b2)
+{
+    float3 materialAlbedo;
+    float materialRoughness;
+    
+    float3 materialEmissive;
+    float materialMetallic;
+    
+    float materialAmbientOcclusion;
+    float padding1;
+    float padding2;
+    float padding3;
+};
+
+// Light constants moved to b3 to match new root signature
+cbuffer LightConstants : register(b3)
 {
     float3 sunDirection;
     float sunIntensity;
@@ -14,14 +32,15 @@ cbuffer LightConstants : register(b2)
     float pad0;
 };
 
-cbuffer CameraPosition : register(b3)
+// Camera position moved to b4 to match new root signature
+cbuffer CameraPosition : register(b4)
 {
     float3 cameraPosition;
     float pad1;
 };
 
-// Shadow map constants (light matrices)
-cbuffer ShadowConstants : register(b4)
+// Shadow map constants (light matrices) moved to b5 to match new root signature
+cbuffer ShadowConstants : register(b5)
 {
     float4x4 lightViewMatrix;
     float4x4 lightProjMatrix;
@@ -125,6 +144,12 @@ float4 main(PS_INPUT input) : SV_TARGET
     float3 V = normalize(cameraPosition - input.worldPosition);
     float3 baseColor = input.baseColor.rgb;
     
+    // DEBUG: If normal is zero, output red to indicate the problem
+    if (length(input.worldNormal) < 0.001)
+    {
+        return float4(1.0, 0.0, 0.0, 1.0); // Red = bad normals
+    }
+    
     // PBR material parameters (can be driven by genetics later)
     float metallic = 0.0;    // Creatures are dielectric (non-metallic)
     float roughness = 0.6;   // Moderate roughness for organic surfaces
@@ -143,6 +168,9 @@ float4 main(PS_INPUT input) : SV_TARGET
     float3 H = normalize(V + L);
     
     float NdotL = max(dot(N, L), 0.0);
+    
+    // DEBUG: Output NdotL as grayscale to see if lighting is working
+    // return float4(NdotL.xxx, 1.0);
     
     if (NdotL > 0.0)
     {
@@ -164,9 +192,13 @@ float4 main(PS_INPUT input) : SV_TARGET
         float3 kD = float3(1.0, 1.0, 1.0) - kS;
         kD *= 1.0 - metallic;
         
-        // Radiance equation (apply shadow)
-        Lo += (kD * baseColor / 3.14159265 + specular) * sunColor * sunIntensity * NdotL * shadow;
+        // Radiance equation (apply shadow with minimum floor to prevent complete darkness)
+        float shadowFactor = max(shadow, 0.3); // At least 30% light even in shadow
+        Lo += (kD * baseColor / 3.14159265 + specular) * sunColor * sunIntensity * NdotL * shadowFactor;
     }
+    
+    // DEBUG: Output just the diffuse lighting to isolate the issue
+    // return float4(Lo * baseColor, 1.0);
     
     // Ground ambient (bounce light)
     float3 groundAmbient = baseColor * groundAmbientColor * groundAmbientIntensity * 0.5;
