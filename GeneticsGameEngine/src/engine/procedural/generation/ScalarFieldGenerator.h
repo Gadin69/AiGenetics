@@ -28,6 +28,10 @@ public:
                                     const Engine::Animation::Skeleton& skeleton,
                                     const CreatureParams& params);
     
+    // Set falloff multiplier for dynamic UI control
+    void SetFalloffMultiplier(float multiplier) { m_falloffMultiplier = multiplier; }
+    float GetFalloffMultiplier() const { return m_falloffMultiplier; }
+    
 private:
     // Main density function for creature shape
     // From tables.txt TABLE 8 (lines 491-512)
@@ -50,15 +54,32 @@ private:
                        float radius) const;
     
     // NEW: Skeleton-based density functions
-    float ComputeBoneDensity(const DirectX::XMFLOAT3& voxelPos, 
-                             const Engine::Animation::Bone& bone,
-                             float adaptiveScale) const;
+    float ComputeBoneSDF(const DirectX::XMFLOAT3& voxelPos, 
+                         const Engine::Animation::Bone& bone,
+                         float adaptiveScale,
+                         ArchetypeType archetype = ArchetypeType::Chordata) const;
     
     float CylinderSDF(const DirectX::XMFLOAT3& pos,
                       const DirectX::XMFLOAT3& boneStart,
                       const DirectX::XMFLOAT3& boneEnd,
                       float radius,
                       float adaptiveScale) const;
+    
+    // Archetype-specific SDF primitives (from Inigo Quilez & Spore)
+    float CapsuleSDF(const DirectX::XMFLOAT3& pos,
+                     const DirectX::XMFLOAT3& p1,
+                     const DirectX::XMFLOAT3& p2,
+                     float radius) const;
+    
+    float MetaballSDF(const DirectX::XMFLOAT3& pos,
+                      const DirectX::XMFLOAT3& center,
+                      float radius) const;
+    
+    // Smooth union for SDF blending (Inigo Quilez polynomial version)
+    float SmoothUnion(float d1, float d2, float k) const;
+    
+    // Dynamic falloff multiplier (default 1.5f)
+    float m_falloffMultiplier = 1.5f;
 };
 
 } // namespace Generation

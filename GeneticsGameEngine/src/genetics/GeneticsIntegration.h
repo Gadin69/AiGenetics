@@ -80,6 +80,9 @@ private:
     Engine::Procedural::Mesh::MeshOptimizer m_meshOptimizer;
     Engine::Procedural::Voxel::VoxelLODManager m_lodManager;
     
+    // Stored device for mesh regeneration
+    ID3D12Device* m_device = nullptr;
+    
     // Phase 4: Neural network indices (one per organism)
     std::vector<size_t> m_neuralNetworkIndices;
     
@@ -111,7 +114,16 @@ public:
     // Get creature meshes for rendering
     const std::vector<CreatureMeshData>& GetCreatureMeshes() const { return m_creatureMeshes; }
     
+    // Get scalar field generator for UI control
+    Engine::Procedural::Generation::ScalarFieldGenerator& GetScalarFieldGenerator() { return m_scalarFieldGenerator; }
+    
+    // Regenerate all meshes with custom parameters
+    void RegenerateMeshes(float voxelSize, float falloffMultiplier);
+    
 private:
     DirectX::XMFLOAT4 GetColorFromIndex(int index);
     CreatureMeshData GenerateMeshForOrganism(const Engine::Genetics::Taxonomy::Organism* organism, int index);
+    CreatureMeshData GenerateMeshForOrganismWithParams(
+        const Engine::Genetics::Taxonomy::Organism* organism, int index,
+        float voxelSize, float falloffMultiplier);
 };

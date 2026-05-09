@@ -8,6 +8,14 @@ namespace Generation {
 
 // Creature parameters mapped from genetic loci
 // From tables.txt TABLE 12 (lines 633-644): Complete genetic loci mapping
+
+// Archetype types for creature generation (from creature-structure-rewrite plan)
+enum class ArchetypeType : uint8_t {
+    Chordata = 0,    // Vertebrates - smooth capsule blending
+    Arthropoda = 1,  // Insects - segmented ellipsoid blending
+    Mollusca = 2     // Soft-bodied - metaball blending
+};
+
 struct CreatureParams {
     // Genetic parameters (from TABLE 12)
     float scaleFactor;         // Locus 0x1A2B, range 0.5-3.0
@@ -19,6 +27,10 @@ struct CreatureParams {
     float roughness;           // Locus 0x3M4N, PBR parameter 0.0-1.0
     float metallic;            // Locus 0x5O6P, PBR parameter 0.0-1.0
     float subsurfaceScattering;// Locus 0x7Q8R, range 0.0-1.0
+    
+    // Archetype-specific parameters
+    ArchetypeType archetype = ArchetypeType::Chordata;
+    float blendSmoothness = 0.3f; // k-value for smooth union (0.05=hard, 0.5=soft)
     
     // Body plan parameters (from tables.txt TABLE 7)
     DirectX::XMFLOAT3 bodyCenter;

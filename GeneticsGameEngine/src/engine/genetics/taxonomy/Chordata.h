@@ -46,6 +46,8 @@ public:
         Engine::Procedural::Generation::CreatureParams params;
         params.scaleFactor = m_scale;
         params.limbCount = m_limbCount;
+        params.archetype = Engine::Procedural::Generation::ArchetypeType::Chordata;
+        params.blendSmoothness = 0.3f; // Moderate blending for vertebrates
         // Additional parameters can be mapped from genes here
         
         return std::make_unique<Engine::Animation::Skeleton>(

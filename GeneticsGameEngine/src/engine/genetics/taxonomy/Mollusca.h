@@ -46,6 +46,8 @@ public:
         Engine::Procedural::Generation::CreatureParams params;
         params.scaleFactor = m_scale;
         params.limbCount = m_limbCount;
+        params.archetype = Engine::Procedural::Generation::ArchetypeType::Mollusca;
+        params.blendSmoothness = 0.5f; // Very smooth blending for soft bodies
         
         return std::make_unique<Engine::Animation::Skeleton>(
             generator.GenerateSkeleton(m_genome, params)

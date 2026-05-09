@@ -127,6 +127,30 @@ void UIManager::RenderDebugPanel(GeneticsIntegration* geneticsIntegration, int f
     ImGui::Text("Scene:");
     ImGui::Text("  Creatures: %zu", geneticsIntegration->GetCreatureMeshes().size());
     
+    ImGui::Separator();
+    ImGui::Text("Mesh Generation Controls:");
+    
+    // Voxel size slider
+    static float voxelSize = 0.031f; // User-tuned default
+    ImGui::SliderFloat("Voxel Size", &voxelSize, 0.01f, 0.10f, "%.3f");
+    ImGui::Text("  Smaller = higher detail, slower");
+    
+    // Falloff multiplier slider
+    static float falloffMultiplier = 1.2f; // User-tuned default
+    ImGui::SliderFloat("Falloff Radius", &falloffMultiplier, 0.5f, 5.0f, "%.1fx");
+    ImGui::Text("  Higher = more blobby, Lower = more defined");
+    
+    ImGui::Spacing();
+    
+    // Regenerate button
+    if (ImGui::Button("Regenerate Meshes", ImVec2(-1, 0)))
+    {
+        // Set falloff on scalar field generator
+        geneticsIntegration->GetScalarFieldGenerator().SetFalloffMultiplier(falloffMultiplier);
+        // Regenerate all meshes
+        geneticsIntegration->RegenerateMeshes(voxelSize, falloffMultiplier);
+    }
+    
     ImGui::End();
 }
 

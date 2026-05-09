@@ -59,7 +59,7 @@ Skeleton ArthropodaSkeletonGenerator::GenerateSkeleton(
 void ArthropodaSkeletonGenerator::GenerateHeadSegment(Skeleton& skeleton, float headSize)
 {
     XMFLOAT3 position = {0.0f, 0.0f, 0.0f};
-    XMFLOAT3 length = {headSize, headSize * 0.7f, headSize * 0.8f};
+    XMFLOAT3 length = {headSize * 1.2f, headSize * 0.9f, headSize * 1.0f}; // Thicker head
     
     skeleton.AddBone(CreateBone("Head", position, length, -1), -1);
 }
@@ -70,8 +70,8 @@ void ArthropodaSkeletonGenerator::GenerateThoraxSegments(
     for (int i = 0; i < segmentCount; ++i)
     {
         std::string name = "Thorax_" + std::to_string(i);
-        XMFLOAT3 position = {0.0f, -(i + 1) * segmentLength, 0.0f}; // Down in Y
-        XMFLOAT3 length = {0.2f * segmentLength, segmentLength * 0.9f, 0.15f * segmentLength}; // Y is length
+        XMFLOAT3 position = {0.0f, -segmentLength, 0.0f}; // Relative offset from parent (DOWN in Y)
+        XMFLOAT3 length = {0.35f * segmentLength, segmentLength * 0.95f, 0.25f * segmentLength}; // Thicker segments
         
         int parentIndex = i; // Head is index 0, first thorax is index 1
         skeleton.AddBone(CreateBone(name, position, length, parentIndex), parentIndex);

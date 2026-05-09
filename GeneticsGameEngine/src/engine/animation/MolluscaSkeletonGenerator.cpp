@@ -51,7 +51,7 @@ Skeleton MolluscaSkeletonGenerator::GenerateSkeleton(
 void MolluscaSkeletonGenerator::GenerateFoot(Skeleton& skeleton, float footLength)
 {
     XMFLOAT3 position = {0.0f, -0.3f, 0.0f};
-    XMFLOAT3 length = {footLength * 0.6f, 0.15f, footLength};
+    XMFLOAT3 length = {footLength * 0.7f, 0.25f, footLength}; // Thicker foot
     
     skeleton.AddBone(CreateBone("Foot", position, length, -1), -1);
 }
@@ -59,7 +59,7 @@ void MolluscaSkeletonGenerator::GenerateFoot(Skeleton& skeleton, float footLengt
 void MolluscaSkeletonGenerator::GenerateVisceralMass(Skeleton& skeleton, float massSize)
 {
     XMFLOAT3 position = {0.0f, 0.3f, 0.0f};
-    XMFLOAT3 length = {massSize, massSize * 0.8f, massSize};
+    XMFLOAT3 length = {massSize * 1.2f, massSize * 1.0f, massSize * 1.2f}; // Larger visceral mass
     
     skeleton.AddBone(CreateBone("VisceralMass", position, length, 0), 0);
 }
@@ -73,12 +73,12 @@ void MolluscaSkeletonGenerator::GenerateShell(Skeleton& skeleton, int spiralTurn
     {
         std::string name = "Shell_Turn_" + std::to_string(i);
         
-        // Spiral positioning
+        // Spiral positioning - relative to parent
         float angle = i * XM_PIDIV2; // 90 degrees per turn
-        float radius = shellSize * 0.3f * i;
+        float radius = shellSize * 0.3f;
         XMFLOAT3 position = {
             std::cos(angle) * radius,
-            shellSize * 0.5f + i * shellSize * 0.2f,
+            shellSize * 0.2f,
             std::sin(angle) * radius
         };
         
@@ -104,7 +104,8 @@ void MolluscaSkeletonGenerator::GenerateTentaclePair(
         for (int i = 0; i < segments; ++i)
         {
             std::string name = baseName + "_Seg_" + std::to_string(i);
-            XMFLOAT3 position = {0.3f + i * 0.05f, 0.0f, -i * segmentLength * 0.3f};
+            // Relative offset from parent (first segment starts at 0.3f, subsequent segments continue outward)
+            XMFLOAT3 position = { (i == 0) ? 0.3f : 0.05f, 0.0f, (i == 0) ? 0.0f : -segmentLength * 0.3f };
             XMFLOAT3 length = {0.04f, 0.04f, segmentLength};
             
             skeleton.AddBone(CreateBone(name, position, length, parentIdx), parentIdx);
@@ -120,7 +121,8 @@ void MolluscaSkeletonGenerator::GenerateTentaclePair(
         for (int i = 0; i < segments; ++i)
         {
             std::string name = baseName + "_Seg_" + std::to_string(i);
-            XMFLOAT3 position = {-0.3f - i * 0.05f, 0.0f, -i * segmentLength * 0.3f};
+            // Relative offset from parent (first segment starts at -0.3f, subsequent segments continue outward)
+            XMFLOAT3 position = { (i == 0) ? -0.3f : -0.05f, 0.0f, (i == 0) ? 0.0f : -segmentLength * 0.3f };
             XMFLOAT3 length = {0.04f, 0.04f, segmentLength};
             
             skeleton.AddBone(CreateBone(name, position, length, parentIdx), parentIdx);

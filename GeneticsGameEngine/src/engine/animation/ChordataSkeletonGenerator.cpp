@@ -59,7 +59,7 @@ void ChordataSkeletonGenerator::GenerateSpine(Skeleton& skeleton, float bodyLeng
             position = {0.0f, vertebraSpacing, 0.0f};
         }
         
-        XMFLOAT3 length = {0.15f, vertebraSpacing * 0.8f, 0.15f}; // Y is the length axis
+        XMFLOAT3 length = {0.3f, vertebraSpacing * 0.9f, 0.3f}; // Y is the length axis, thicker body
         
         int parentIndex = (i > 0) ? (i - 1) : -1; // First vertebra is root
         skeleton.AddBone(CreateBone(name, position, length, parentIndex), parentIndex);
@@ -69,7 +69,7 @@ void ChordataSkeletonGenerator::GenerateSpine(Skeleton& skeleton, float bodyLeng
 void ChordataSkeletonGenerator::GenerateHead(Skeleton& skeleton, int spineTopIndex, float headSize)
 {
     XMFLOAT3 position = {0.0f, headSize * 0.5f, 0.0f}; // Above spine top (Y axis)
-    XMFLOAT3 length = {headSize, headSize * 0.8f, headSize};
+    XMFLOAT3 length = {headSize * 1.2f, headSize * 1.0f, headSize * 1.2f}; // Larger head
     
     skeleton.AddBone(CreateBone("Head", position, length, spineTopIndex), spineTopIndex);
 }
@@ -146,7 +146,7 @@ void ChordataSkeletonGenerator::GenerateAppendage(
 {
     std::string typeName;
     XMFLOAT3 position = {0.0f, 0.0f, 0.0f};
-    XMFLOAT3 boneLength = {0.1f, 0.1f, length};
+    XMFLOAT3 boneLength = {0.15f, 0.15f, length * 0.8f}; // Thicker limbs
     float rotation = 0.0f;
     
     // Position based on attachment slot (pentagonal arrangement)

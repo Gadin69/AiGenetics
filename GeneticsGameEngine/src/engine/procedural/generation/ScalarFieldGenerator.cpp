@@ -190,41 +190,99 @@ void ScalarFieldGenerator::GenerateFieldFromSkeleton(
     int sizeZ = grid.GetSizeZ();
     float voxelSize = grid.GetVoxelSize();
     
-    // Calculate offset to center the creature in the grid
-    float offsetX = -sizeX * voxelSize * 0.5f;
-    float offsetY = -sizeY * voxelSize * 0.5f;
-    float offsetZ = -sizeZ * voxelSize * 0.5f;
-    
     const auto& bones = skeleton.GetBones();
     
-    // DEBUG: Print first 3 bone world positions to verify transforms
+    // Calculate bounding box from ALL bone world positions and their lengths
+    // This ensures the grid encompasses the entire creature
+    float minX = 999.0f, minY = 999.0f, minZ = 999.0f;
+    float maxX = -999.0f, maxY = -999.0f, maxZ = -999.0f;
+    
+    for (const auto& bone : bones)
+    {
+        // Get bone world position
+        DirectX::XMFLOAT3 worldPos = {
+            bone.worldTransform._41,
+            bone.worldTransform._42,
+            bone.worldTransform._43
+        };
+        
+        // Include bone position
+        minX = std::min(minX, worldPos.x);
+        minY = std::min(minY, worldPos.y);
+        minZ = std::min(minZ, worldPos.z);
+        maxX = std::max(maxX, worldPos.x);
+        maxY = std::max(maxY, worldPos.y);
+        maxZ = std::max(maxZ, worldPos.z);
+        
+        // Include bone extent (use max dimension as radius)
+        float boneRadius = std::max({std::abs(bone.boneLength.x), std::abs(bone.boneLength.y), std::abs(bone.boneLength.z)});
+        minX = std::min(minX, worldPos.x - boneRadius);
+        minY = std::min(minY, worldPos.y - boneRadius);
+        minZ = std::min(minZ, worldPos.z - boneRadius);
+        maxX = std::max(maxX, worldPos.x + boneRadius);
+        maxY = std::max(maxY, worldPos.y + boneRadius);
+        maxZ = std::max(maxZ, worldPos.z + boneRadius);
+    }
+    
+    // Add padding to ensure smooth falloff at edges and allow mesh to close off
+    float padding = voxelSize * 10.0f; // 10 voxels of padding for proper mesh closure
+    minX -= padding;
+    minY -= padding;
+    minZ -= padding;
+    maxX += padding;
+    maxY += padding;
+    maxZ += padding;
+    
+    // Calculate grid center and offset
+    float centerX = (minX + maxX) * 0.5f;
+    float centerY = (minY + maxY) * 0.5f;
+    float centerZ = (minZ + maxZ) * 0.5f;
+    
+    // Offset places the grid so it encompasses the creature
+    float offsetX = centerX - sizeX * voxelSize * 0.5f;
+    float offsetY = centerY - sizeY * voxelSize * 0.5f;
+    float offsetZ = centerZ - sizeZ * voxelSize * 0.5f;
+    
+    printf("  [DEBUG ScalarField] Bounds: (%.2f, %.2f, %.2f) to (%.2f, %.2f, %.2f), Center: (%.2f, %.2f, %.2f)\n",
+           minX, minY, minZ, maxX, maxY, maxZ, centerX, centerY, centerZ);
+    
+    // DEBUG: Print first 5 bone world positions and parent indices to understand hierarchy
     printf("  [DEBUG BoneTransforms] Total bones: %zu\n", bones.size());
-    for (size_t i = 0; i < bones.size() && i < 3; i++)
+    for (size_t i = 0; i < bones.size() && i < 5; i++)
     {
         DirectX::XMFLOAT3 worldPos = {
             bones[i].worldTransform._41,
             bones[i].worldTransform._42,
             bones[i].worldTransform._43
         };
-        printf("  [DEBUG BoneTransforms] Bone %zu: %s, localPos=(%.2f, %.2f, %.2f), worldPos=(%.2f, %.2f, %.2f)\n",
-               i, bones[i].name.c_str(),
+        printf("  [DEBUG BoneTransforms] Bone %zu: %s, parent=%d, localPos=(%.2f, %.2f, %.2f), boneLength=(%.2f, %.2f, %.2f), worldPos=(%.2f, %.2f, %.2f)\n",
+               i, bones[i].name.c_str(), bones[i].parentIndex,
                bones[i].localPosition.x, bones[i].localPosition.y, bones[i].localPosition.z,
+               bones[i].boneLength.x, bones[i].boneLength.y, bones[i].boneLength.z,
                worldPos.x, worldPos.y, worldPos.z);
     }
     
     // Calculate adaptive scaling factor based on bone count
     // More bones = more density summation = need smaller individual contributions
     // Target: keep maximum density around 1.0-2.0 for proper isosurface extraction
+    // Adjusted for 1.5x radius falloff (tighter blending needs higher base density)
     float boneCount = static_cast<float>(bones.size());
-    float adaptiveScale = 1.0f / (boneCount * 1.5f); // Balanced scaling
+    float adaptiveScale = 3.0f / (boneCount * 0.5f); // Higher base for tighter falloff
     
     printf("  [DEBUG ScalarField] Bone count: %zu, Adaptive scale: %.3f\n", bones.size(), adaptiveScale);
     
-    // Fill scalar field by computing distance to nearest bone at each voxel
+    // NEW: Fill scalar field using smooth SDF union (not linear summation)
     float minDensity = 999.0f;
     float maxDensity = -999.0f;
     int aboveIsovalue = 0;
     int belowIsovalue = 0;
+    
+    // Get archetype blend smoothness from params
+    float blendK = params.blendSmoothness; // 0.05=hard (Arthropoda), 0.3=smooth (Chordata), 0.5=very smooth (Mollusca)
+    
+    // Calculate bounding box size to normalize SDF values
+    float boundingSize = std::max({maxX - minX, maxY - minY, maxZ - minZ});
+    float sdfScale = 2.0f / boundingSize; // Scale SDF so creature fills the grid properly
     
     for (int z = 0; z < sizeZ; ++z) {
         for (int y = 0; y < sizeY; ++y) {
@@ -236,13 +294,24 @@ void ScalarFieldGenerator::GenerateFieldFromSkeleton(
                     z * voxelSize + offsetZ
                 );
                 
-                // Compute density from all bones (metaball-style summation)
-                float density = 0.0f;
+                // Compute SDF from all bones using SMOOTH UNION
+                // Start with far-away distance (positive = outside)
+                float sdf = 999.0f;
                 for (const auto& bone : bones)
                 {
-                    float boneDensity = ComputeBoneDensity(voxelPos, bone, adaptiveScale);
-                    density += boneDensity;
+                    float boneSDF = ComputeBoneSDF(voxelPos, bone, adaptiveScale, params.archetype);
+                    sdf = SmoothUnion(sdf, boneSDF, blendK);
                 }
+                
+                // Scale SDF to ensure it crosses the 0.5 isovalue
+                // Positive SDF = outside (should be < 0.5 density)
+                // Negative SDF = inside (should be > 0.5 density)
+                sdf *= sdfScale;
+                
+                // Convert SDF to density convention (negative inside = solid)
+                // Invert: negative SDF (inside) becomes positive density
+                // Add offset to center the range around 0.5
+                float density = -sdf + 0.5f;
                 
                 // Track density range
                 minDensity = std::min(minDensity, density);
@@ -262,11 +331,12 @@ void ScalarFieldGenerator::GenerateFieldFromSkeleton(
            aboveIsovalue, belowIsovalue, sizeX * sizeY * sizeZ);
 }
 
-// Compute density contribution from a single bone
-float ScalarFieldGenerator::ComputeBoneDensity(
+// Compute SDF contribution from a single bone (returns true signed distance)
+float ScalarFieldGenerator::ComputeBoneSDF(
     const DirectX::XMFLOAT3& voxelPos,
     const Engine::Animation::Bone& bone,
-    float adaptiveScale) const
+    float adaptiveScale,
+    ArchetypeType archetype) const
 {
     // Get bone's world-space position from transform matrix
     DirectX::XMFLOAT3 bonePos = {
@@ -275,30 +345,61 @@ float ScalarFieldGenerator::ComputeBoneDensity(
         bone.worldTransform._43
     };
     
-    // Bone thickness (maximum dimension for proper 3D coverage)
-    float boneRadius = std::max({bone.boneLength.x, bone.boneLength.y, bone.boneLength.z}) * 2.0f;
+    // Bone thickness (use average dimension)
+    float boneRadius = (bone.boneLength.x + bone.boneLength.y + bone.boneLength.z) / 4.0f;
+    boneRadius *= adaptiveScale; // Apply adaptive scaling
     
-    // Bone length direction (Z axis in local space, transformed to world)
-    DirectX::XMFLOAT3 boneDir = {
-        bone.worldTransform._31,
-        bone.worldTransform._32,
-        bone.worldTransform._33
-    };
+    // Apply falloff multiplier to control metaball influence radius
+    // Higher falloff = thicker/blended meshes, Lower falloff = thinner/defined meshes
+    float effectiveRadius = boneRadius * m_falloffMultiplier;
     
-    // Compute bone endpoint
-    // Use the MAXIMUM dimension as the bone length (direction of growth)
-    float boneLen = std::max({bone.boneLength.x, bone.boneLength.y, bone.boneLength.z});
-    DirectX::XMFLOAT3 boneEnd = {
-        bonePos.x + boneDir.x * boneLen,
-        bonePos.y + boneDir.y * boneLen,
-        bonePos.z + boneDir.z * boneLen
-    };
+    // Compute bone endpoint (growth direction)
+    DirectX::XMFLOAT3 boneEnd = bonePos;
+    float maxX = std::abs(bone.boneLength.x);
+    float maxY = std::abs(bone.boneLength.y);
+    float maxZ = std::abs(bone.boneLength.z);
     
-    // Use cylinder SDF for bone density
-    return CylinderSDF(voxelPos, bonePos, boneEnd, boneRadius, adaptiveScale);
+    if (maxY >= maxX && maxY >= maxZ)
+        boneEnd = { bonePos.x, bonePos.y + bone.boneLength.y, bonePos.z };
+    else if (maxX >= maxY && maxX >= maxZ)
+        boneEnd = { bonePos.x + bone.boneLength.x, bonePos.y, bonePos.z };
+    else
+        boneEnd = { bonePos.x, bonePos.y, bonePos.z + bone.boneLength.z };
+    
+    // Archetype-specific SDF primitive
+    switch (archetype)
+    {
+        case ArchetypeType::Chordata:
+            // Capsule SDF for vertebrate limbs (smooth muscle blending)
+            return CapsuleSDF(voxelPos, bonePos, boneEnd, effectiveRadius);
+            
+        case ArchetypeType::Arthropoda:
+            // Cylinder SDF for exoskeleton segments (use existing implementation)
+            return CylinderSDF(voxelPos, bonePos, boneEnd, effectiveRadius, 1.0f);
+            
+        case ArchetypeType::Mollusca:
+            // Soft metaball for hydrostatic skeleton (2x radius for blobby look)
+            DirectX::XMFLOAT3 center = {
+                (bonePos.x + boneEnd.x) * 0.5f,
+                (bonePos.y + boneEnd.y) * 0.5f,
+                (bonePos.z + boneEnd.z) * 0.5f
+            };
+            return MetaballSDF(voxelPos, center, effectiveRadius * 2.0f);
+            
+        default:
+            // Fallback to capsule
+            return CapsuleSDF(voxelPos, bonePos, boneEnd, effectiveRadius);
+    }
 }
 
-// Cylinder signed distance function
+// Smooth union for SDF blending (Inigo Quilez polynomial version)
+// Maintains true distance field properties (unlike linear summation)
+float ScalarFieldGenerator::SmoothUnion(float d1, float d2, float k) const {
+    float h = std::clamp(0.5f + 0.5f * (d2 - d1) / k, 0.0f, 1.0f);
+    return std::lerp(d2, d1, h) - k * h * (1.0f - h);
+}
+
+// Cylinder signed distance function (kept for Arthropoda exoskeleton segments)
 float ScalarFieldGenerator::CylinderSDF(
     const DirectX::XMFLOAT3& pos,
     const DirectX::XMFLOAT3& boneStart,
@@ -350,14 +451,51 @@ float ScalarFieldGenerator::CylinderSDF(
     
     float distance = std::sqrt(distVec.x * distVec.x + distVec.y * distVec.y + distVec.z * distVec.z);
     
-    // Density falls off with distance (metaball-style)
-    // Use very large falloff to ensure proper 3D volume creation
-    float falloff = radius * 6.0f; // Large influence radius for volumetric blending
-    float density = std::max(0.0f, 1.0f - (distance / falloff));
+    // Return true SDF (positive outside, negative inside)
+    return distance - radius;
+}
+
+// Capsule SDF (from Inigo Quilez)
+float ScalarFieldGenerator::CapsuleSDF(
+    const DirectX::XMFLOAT3& pos,
+    const DirectX::XMFLOAT3& p1,
+    const DirectX::XMFLOAT3& p2,
+    float radius) const
+{
+    DirectX::XMVECTOR pa = DirectX::XMLoadFloat3(&pos);
+    DirectX::XMVECTOR v_p1 = DirectX::XMLoadFloat3(&p1);
+    DirectX::XMVECTOR v_p2 = DirectX::XMLoadFloat3(&p2);
+    DirectX::XMVECTOR ba = DirectX::XMVectorSubtract(v_p2, v_p1);
+    DirectX::XMVECTOR pb = DirectX::XMVectorSubtract(pa, v_p1);
     
-    // Apply adaptive scaling to ensure density range crosses the 0.5 isovalue
-    // More bones = smaller individual contributions needed
-    return density * adaptiveScale;
+    float h = DirectX::XMVectorGetX(DirectX::XMVector3Dot(pb, ba)) / 
+              DirectX::XMVectorGetX(DirectX::XMVector3LengthSq(ba));
+    h = std::clamp(h, 0.0f, 1.0f);
+    
+    DirectX::XMVECTOR closest = DirectX::XMVectorMultiplyAdd(ba, DirectX::XMVectorReplicate(h), v_p1);
+    return DirectX::XMVectorGetX(DirectX::XMVector3Length(DirectX::XMVectorSubtract(pa, closest))) - radius;
+}
+
+// Metaball SDF (4th order polynomial from Spore)
+float ScalarFieldGenerator::MetaballSDF(
+    const DirectX::XMFLOAT3& pos,
+    const DirectX::XMFLOAT3& center,
+    float radius) const
+{
+    DirectX::XMVECTOR p = DirectX::XMLoadFloat3(&pos);
+    DirectX::XMVECTOR c = DirectX::XMLoadFloat3(&center);
+    DirectX::XMVECTOR diff = DirectX::XMVectorSubtract(p, c);
+    float distSq = DirectX::XMVectorGetX(DirectX::XMVector3LengthSq(diff));
+    
+    // 4th order polynomial (smoother derivatives than linear)
+    // f(d) = radius² * (1 - d²/radius²)²
+    // SDF approximation: radius - d (but with smooth falloff)
+    float normalizedDistSq = distSq / (radius * radius);
+    if (normalizedDistSq >= 1.0f) return std::sqrt(distSq) - radius; // Outside
+    
+    // Inside: use polynomial for smooth blending
+    float metaballValue = (1.0f - normalizedDistSq) * (1.0f - normalizedDistSq);
+    return -metaballValue * radius; // Negative = inside
 }
 
 } // namespace Generation

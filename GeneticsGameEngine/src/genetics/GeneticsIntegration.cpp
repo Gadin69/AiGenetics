@@ -60,6 +60,9 @@ void GeneticsIntegration::GenerateCreatureMeshes(ID3D12Device* device, ID3D12Gra
         return;
     }
     
+    // Store device for later regeneration
+    m_device = device;
+    
     // Clear existing meshes
     m_creatureMeshes.clear();
     
@@ -278,6 +281,14 @@ void GeneticsIntegration::Update(float deltaTime)
 CreatureMeshData GeneticsIntegration::GenerateMeshForOrganism(
     const Engine::Genetics::Taxonomy::Organism* organism, int index) 
 {
+    return GenerateMeshForOrganismWithParams(organism, index, 0.031f, 1.2f); // User-tuned defaults
+}
+
+// Generate mesh with custom voxel and falloff parameters
+CreatureMeshData GeneticsIntegration::GenerateMeshForOrganismWithParams(
+    const Engine::Genetics::Taxonomy::Organism* organism, int index,
+    float voxelSize, float falloffMultiplier)
+{
     std::cout << "    GenerateMeshForOrganism called for " << organism->GetID() << std::endl;
     CreatureMeshData result;
     result.creatureID = organism->GetID();
@@ -304,6 +315,8 @@ CreatureMeshData GeneticsIntegration::GenerateMeshForOrganism(
     if (chordata) {
         params.taxonomyType = 0; // Chordata
         params.limbCount = chordata->GetLimbCount();
+        params.archetype = Engine::Procedural::Generation::ArchetypeType::Chordata;
+        params.blendSmoothness = 0.3f; // Moderate blending for vertebrates
         params.bodyCenter = DirectX::XMFLOAT3(0, 1.0f, 0);
         params.bodyRadii = DirectX::XMFLOAT3(0.5f * params.scaleFactor, 1.0f * params.scaleFactor, 0.5f * params.scaleFactor);
         params.headCenter = DirectX::XMFLOAT3(0, 1.8f * params.scaleFactor, 0);
@@ -311,6 +324,8 @@ CreatureMeshData GeneticsIntegration::GenerateMeshForOrganism(
     } else if (arthropoda) {
         params.taxonomyType = 1; // Arthropoda
         params.limbCount = arthropoda->GetLimbCount();
+        params.archetype = Engine::Procedural::Generation::ArchetypeType::Arthropoda;
+        params.blendSmoothness = 0.05f; // Hard blending for exoskeleton
         params.bodyCenter = DirectX::XMFLOAT3(0, 0.5f, 0);
         params.bodyRadii = DirectX::XMFLOAT3(0.6f * params.scaleFactor, 0.4f * params.scaleFactor, 0.8f * params.scaleFactor);
         params.headCenter = DirectX::XMFLOAT3(0, 0.9f * params.scaleFactor, 0);
@@ -318,12 +333,16 @@ CreatureMeshData GeneticsIntegration::GenerateMeshForOrganism(
     } else if (mollusca) {
         params.taxonomyType = 2; // Mollusca
         params.limbCount = mollusca->GetLimbCount();
+        params.archetype = Engine::Procedural::Generation::ArchetypeType::Mollusca;
+        params.blendSmoothness = 0.5f; // Very smooth blending for soft bodies
         params.bodyCenter = DirectX::XMFLOAT3(0, 0.6f, 0);
         params.bodyRadii = DirectX::XMFLOAT3(0.7f * params.scaleFactor, 0.5f * params.scaleFactor, 0.7f * params.scaleFactor);
         params.headCenter = DirectX::XMFLOAT3(0, 1.2f * params.scaleFactor, 0);
         params.headRadius = 0.35f * params.scaleFactor;
     } else {
         params.taxonomyType = 0; // Default to Chordata
+        params.archetype = Engine::Procedural::Generation::ArchetypeType::Chordata;
+        params.blendSmoothness = 0.3f;
         params.bodyCenter = DirectX::XMFLOAT3(0, 1.0f, 0);
         params.bodyRadii = DirectX::XMFLOAT3(0.5f * params.scaleFactor, 1.0f * params.scaleFactor, 0.5f * params.scaleFactor);
         params.headCenter = DirectX::XMFLOAT3(0, 1.8f * params.scaleFactor, 0);
@@ -338,8 +357,12 @@ CreatureMeshData GeneticsIntegration::GenerateMeshForOrganism(
     // Step 3: Generate voxel grid with scalar field
     std::cout << "    Allocating voxel grid..." << std::endl;
     int gridSize = 64; // Medium resolution
+    // float voxelSize = 0.02f; // Higher resolution (was 0.05f) - NOW PASSED AS PARAMETER
     Engine::Procedural::Voxel::VoxelGrid grid;
-    grid.AllocateGrid(gridSize, gridSize, gridSize, 0.05f);
+    grid.AllocateGrid(gridSize, gridSize, gridSize, voxelSize);
+    
+    // Set falloff multiplier on scalar field generator
+    m_scalarFieldGenerator.SetFalloffMultiplier(falloffMultiplier);
     
     // NEW: Use skeleton-based scalar field if skeleton was generated
     if (result.skeleton)
@@ -659,4 +682,130 @@ GeneticsGameEngine::Rendering::MaterialID GeneticsIntegration::AssignMaterialFro
         std::cout << "    [PBR] Assigned Default material to " << organism->GetID() << std::endl;
         return m_materialSystem->CreateMaterial(material, material.materialID);
     }
+}
+
+// Regenerate all meshes with custom parameters
+void GeneticsIntegration::RegenerateMeshes(float voxelSize, float falloffMultiplier)
+{
+    if (!m_device) {
+        std::cerr << "[RegenerateMeshes] ERROR: Device not stored!" << std::endl;
+        return;
+    }
+    
+    std::cout << "\n[RegenerateMeshes] Regenerating " << m_organisms.size() 
+              << " meshes with voxelSize=" << voxelSize 
+              << ", falloffMultiplier=" << falloffMultiplier << std::endl;
+    
+    // Clear existing meshes
+    m_creatureMeshes.clear();
+    
+    // Create upload command allocator and list
+    Microsoft::WRL::ComPtr<ID3D12CommandAllocator> uploadAllocator;
+    Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> uploadCommandList;
+    
+    HRESULT hr = m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&uploadAllocator));
+    if (FAILED(hr)) {
+        std::cerr << "[RegenerateMeshes] Failed to create upload command allocator!" << std::endl;
+        return;
+    }
+    
+    hr = m_device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, uploadAllocator.Get(), nullptr, IID_PPV_ARGS(&uploadCommandList));
+    if (FAILED(hr)) {
+        std::cerr << "[RegenerateMeshes] Failed to create upload command list!" << std::endl;
+        return;
+    }
+    
+    // Regenerate each organism
+    float xPos = -3.0f;
+    for (size_t i = 0; i < m_organisms.size(); ++i) {
+        try {
+            CreatureMeshData meshData = GenerateMeshForOrganismWithParams(
+                m_organisms[i].get(), static_cast<int>(i), voxelSize, falloffMultiplier);
+            
+            meshData.position = DirectX::XMFLOAT3(xPos, 2.0f, 0.0f);
+            
+            // Initialize mesh renderer and upload to GPU
+            meshData.meshRenderer = std::make_unique<Engine::Procedural::Mesh::ProceduralMeshRenderer>();
+            if (!meshData.meshRenderer->Initialize(m_device)) {
+                std::cerr << "  Failed to initialize mesh renderer for creature " << i << std::endl;
+                continue;
+            }
+            
+            // Create a transformed copy of the mesh with position offset
+            Engine::Procedural::Mesh::MeshData transformedMesh = meshData.mesh;
+            DirectX::XMVECTOR translation = DirectX::XMLoadFloat3(&meshData.position);
+            
+            for (auto& vertex : transformedMesh.vertices) {
+                DirectX::XMVECTOR pos = DirectX::XMLoadFloat3(&vertex);
+                pos = DirectX::XMVectorAdd(pos, translation);
+                DirectX::XMStoreFloat3(&vertex, pos);
+            }
+            
+            // Upload mesh data
+            if (!meshData.meshRenderer->UpdateMesh(transformedMesh, uploadCommandList.Get())) {
+                std::cerr << "  Failed to upload mesh for creature " << i << std::endl;
+                continue;
+            }
+            
+            // Assign material
+            if (m_materialSystem)
+            {
+                meshData.materialID = AssignMaterialFromGenetics(m_organisms[i].get());
+            }
+            else
+            {
+                meshData.materialID = 0;
+            }
+            
+            std::cout << "    Mesh " << i << " generated and uploaded successfully." << std::endl;
+            m_creatureMeshes.push_back(std::move(meshData));
+            
+            xPos += 4.0f;
+        } catch (const std::exception& e) {
+            std::cerr << "    ERROR generating mesh " << i << ": " << e.what() << std::endl;
+        }
+    }
+    
+    // Close and execute upload command list
+    hr = uploadCommandList->Close();
+    if (FAILED(hr)) {
+        std::cerr << "[RegenerateMeshes] Failed to close upload command list!" << std::endl;
+        return;
+    }
+    
+    // Create temporary command queue
+    Microsoft::WRL::ComPtr<ID3D12CommandQueue> uploadQueue;
+    D3D12_COMMAND_QUEUE_DESC queueDesc = {};
+    queueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
+    queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
+    hr = m_device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&uploadQueue));
+    if (FAILED(hr)) {
+        std::cerr << "[RegenerateMeshes] Failed to create upload command queue!" << std::endl;
+        return;
+    }
+    
+    // Execute uploads
+    ID3D12CommandList* ppCommandLists[] = { uploadCommandList.Get() };
+    uploadQueue->ExecuteCommandLists(1, ppCommandLists);
+    
+    // Wait for GPU to complete
+    Microsoft::WRL::ComPtr<ID3D12Fence> fence;
+    hr = m_device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence));
+    if (FAILED(hr)) {
+        std::cerr << "[RegenerateMeshes] Failed to create fence!" << std::endl;
+        return;
+    }
+    
+    HANDLE fenceEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);
+    const UINT64 fenceValue = 1;
+    uploadQueue->Signal(fence.Get(), fenceValue);
+    
+    if (fence->GetCompletedValue() < fenceValue) {
+        fence->SetEventOnCompletion(fenceValue, fenceEvent);
+        WaitForSingleObject(fenceEvent, INFINITE);
+    }
+    
+    CloseHandle(fenceEvent);
+    
+    std::cout << "[RegenerateMeshes] Generated and uploaded " << m_creatureMeshes.size() << " creature meshes." << std::endl;
 }

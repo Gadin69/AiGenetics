@@ -32,6 +32,12 @@ public:
     void ApplyGeneticScaling(float scaleFactor);
     void ApplyLimbLengthModifiers(const std::vector<float>& modifiers);
     
+    // Structural connection management (for mesh generation)
+    void AddStructuralConnection(int32_t boneIndex1, int32_t boneIndex2, 
+                                 StructuralConnectionType type);
+    const std::vector<int32_t>& GetStructuralConnections(int32_t boneIndex) const;
+    StructuralConnectionType GetConnectionType(int32_t boneIndex, size_t connectionIndex) const;
+    
 private:
     // Recursive helper to compute world transforms
     void ComputeBoneTransformsRecursive(int32_t boneIndex, const DirectX::XMFLOAT4X4& parentWorldMatrix);

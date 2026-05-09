@@ -112,5 +112,35 @@ void Skeleton::ApplyLimbLengthModifiers(const std::vector<float>& modifiers)
     }
 }
 
+void Skeleton::AddStructuralConnection(int32_t boneIndex1, int32_t boneIndex2, 
+                                       StructuralConnectionType type)
+{
+    if (boneIndex1 < 0 || boneIndex1 >= static_cast<int32_t>(m_bones.size())) return;
+    if (boneIndex2 < 0 || boneIndex2 >= static_cast<int32_t>(m_bones.size())) return;
+    
+    m_bones[boneIndex1].structuralConnections.push_back(boneIndex2);
+    m_bones[boneIndex1].connectionTypes.push_back(type);
+    
+    // Bidirectional
+    m_bones[boneIndex2].structuralConnections.push_back(boneIndex1);
+    m_bones[boneIndex2].connectionTypes.push_back(type);
+}
+
+const std::vector<int32_t>& Skeleton::GetStructuralConnections(int32_t boneIndex) const
+{
+    static std::vector<int32_t> empty;
+    if (boneIndex < 0 || boneIndex >= static_cast<int32_t>(m_bones.size())) return empty;
+    return m_bones[boneIndex].structuralConnections;
+}
+
+StructuralConnectionType Skeleton::GetConnectionType(int32_t boneIndex, size_t connectionIndex) const
+{
+    if (boneIndex < 0 || boneIndex >= static_cast<int32_t>(m_bones.size())) 
+        return StructuralConnectionType::NONE;
+    if (connectionIndex >= m_bones[boneIndex].connectionTypes.size()) 
+        return StructuralConnectionType::NONE;
+    return m_bones[boneIndex].connectionTypes[connectionIndex];
+}
+
 } // namespace Animation
 } // namespace Engine
