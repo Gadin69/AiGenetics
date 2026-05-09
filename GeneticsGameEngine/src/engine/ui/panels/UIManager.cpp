@@ -1,6 +1,14 @@
 #include "UIManager.h"
 #include "../../../genetics/GeneticsIntegration.h"
 
+// Undefine windows.h max/min macros if defined (from Skeleton.h include chain)
+#ifdef max
+#undef max
+#endif
+#ifdef min
+#undef min
+#endif
+
 namespace Engine {
 namespace UI {
 
@@ -42,6 +50,12 @@ void UIManager::RenderPanels(
     {
         RenderGraphicsPanel();
     }
+    
+    // Skeleton Debug Panel (Phase 7)
+    if (m_showSkeletonPanel)
+    {
+        RenderSkeletonPanel(geneticsIntegration);
+    }
 }
 
 void UIManager::RenderControlPanel(bool& wireframeMode)
@@ -55,6 +69,7 @@ void UIManager::RenderControlPanel(bool& wireframeMode)
     ImGui::Checkbox("Creature Selector", &m_showCreaturePanel);
     ImGui::Checkbox("Debug Panel", &m_showDebugPanel);
     ImGui::Checkbox("Graphics Options", &m_showGraphicsPanel);
+    ImGui::Checkbox("Skeleton Debug", &m_showSkeletonPanel);
     ImGui::Spacing();
     
     ImGui::Text("Rendering:");
@@ -259,6 +274,169 @@ void UIManager::RenderGraphicsPanel()
         ambientOcclusion = true;
         motionBlur = false;
         depthOfField = false;
+    }
+    
+    ImGui::End();
+}
+
+// Phase 7: Skeleton Debug Panel
+void UIManager::RenderSkeletonPanel(GeneticsIntegration* geneticsIntegration)
+{
+    ImGui::Begin("Skeleton Debug Panel", &m_showSkeletonPanel, ImGuiWindowFlags_AlwaysAutoResize);
+    ImGui::Text("Phase 7: Skeletal Animation System");
+    ImGui::Separator();
+    
+    const auto& creatureMeshes = geneticsIntegration->GetCreatureMeshes();
+    
+    if (creatureMeshes.empty())
+    {
+        ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "No creatures loaded");
+        ImGui::End();
+        return;
+    }
+    
+    // Creature selector
+    static int selectedCreature = 0;
+    
+    // Rebuild combo with all creature names
+    std::vector<const char*> creatureNames;
+    for (const auto& mesh : creatureMeshes)
+    {
+        creatureNames.push_back(mesh.creatureID.c_str());
+    }
+    
+    if (ImGui::Combo("Creature", &selectedCreature, 
+                     creatureNames.data(), creatureNames.size()))
+    {
+        // Selection changed
+    }
+    
+    if (selectedCreature < 0 || selectedCreature >= (int)creatureMeshes.size())
+    {
+        selectedCreature = 0;
+    }
+    
+    const auto& creature = creatureMeshes[selectedCreature];
+    
+    ImGui::Separator();
+    ImGui::Text("Creature: %s", creature.creatureID.c_str());
+    ImGui::Text("Mesh: %u vertices, %u triangles", 
+                creature.meshRenderer->GetVertexCount(),
+                creature.mesh.indices.size() / 3);
+    
+    ImGui::Separator();
+    
+    // Display skeleton info
+    if (creature.skeleton)
+    {
+        const auto& skeleton = *creature.skeleton;
+        const auto& bones = skeleton.GetBones();
+        
+        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✓ Skeleton Generated");
+        ImGui::Text("Total Bones: %zu", bones.size());
+        
+        // Skeleton visualization toggle
+        ImGui::Spacing();
+        // Need to access via non-const reference from the vector
+        bool& showVis = const_cast<bool&>(creature.showSkeletonVisualization);
+        if (ImGui::Checkbox("Show Skeleton Visualization", &showVis))
+        {
+            // Toggle changed
+        }
+        ImGui::SameLine();
+        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(Yellow wireframe lines)");
+        
+        ImGui::Spacing();
+        ImGui::Text("Bone Hierarchy:");
+        
+        // Show first 20 bones to avoid UI clutter
+        int boneCount = std::min((int)bones.size(), 20);
+        for (int i = 0; i < boneCount; ++i)
+        {
+            const auto& bone = bones[i];
+            
+            // Indent based on hierarchy depth
+            int depth = 0;
+            int parentIdx = bone.parentIndex;
+            while (parentIdx != -1 && parentIdx < (int)bones.size())
+            {
+                depth++;
+                parentIdx = bones[parentIdx].parentIndex;
+                if (depth > 10) break; // Safety limit
+            }
+            
+            ImGui::Indent(depth * 16.0f);
+            
+            // Bone name and parent info
+            if (bone.parentIndex == -1)
+            {
+                ImGui::Text("[%d] %s (ROOT)", i, bone.name.c_str());
+            }
+            else
+            {
+                ImGui::Text("[%d] %s (parent: %d)", i, bone.name.c_str(), bone.parentIndex);
+            }
+            
+            // Bone dimensions
+            ImGui::Indent(16.0f);
+            ImGui::Text("Length: (%.2f, %.2f, %.2f)", 
+                       bone.boneLength.x, bone.boneLength.y, bone.boneLength.z);
+            ImGui::Text("Position: (%.2f, %.2f, %.2f)", 
+                       bone.localPosition.x, bone.localPosition.y, bone.localPosition.z);
+            ImGui::Unindent(16.0f);
+            
+            ImGui::Unindent(depth * 16.0f);
+        }
+        
+        if ((int)bones.size() > 20)
+        {
+            ImGui::Text("... and %zu more bones", bones.size() - 20);
+        }
+        
+        ImGui::Separator();
+        
+        // Skeleton statistics
+        ImGui::Text("Skeleton Statistics:");
+        int rootBones = 0;
+        float totalMass = 0.0f;
+        int limbBones = 0;
+        int organBones = 0;
+        
+        for (const auto& bone : bones)
+        {
+            if (bone.parentIndex == -1) rootBones++;
+            totalMass += bone.mass;
+            
+            // Classify bone type by name
+            if (bone.name.find("Leg") != std::string::npos ||
+                bone.name.find("Arm") != std::string::npos ||
+                bone.name.find("Wing") != std::string::npos ||
+                bone.name.find("Tentacle") != std::string::npos)
+            {
+                limbBones++;
+            }
+            else if (bone.name.find("Eye") != std::string::npos ||
+                     bone.name.find("Organ") != std::string::npos)
+            {
+                organBones++;
+            }
+        }
+        
+        ImGui::BulletText("Root bones: %d", rootBones);
+        ImGui::BulletText("Limb bones: %d", limbBones);
+        ImGui::BulletText("Organ bones: %d", organBones);
+        ImGui::BulletText("Total mass: %.2f", totalMass);
+        
+        ImGui::Spacing();
+        ImGui::TextColored(ImVec4(0.5f, 0.8f, 1.0f, 1.0f), "Info:");
+        ImGui::BulletText("Bones act as metaball attractors");
+        ImGui::BulletText("Mesh wraps around skeleton");
+        ImGui::BulletText("Genetics control bone placement");
+    }
+    else
+    {
+        ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "✗ No skeleton available");
+        ImGui::Text("Skeleton generation failed or not implemented");
     }
     
     ImGui::End();

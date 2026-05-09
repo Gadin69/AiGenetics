@@ -85,16 +85,14 @@ void GeneticsIntegration::GenerateCreatureMeshes(ID3D12Device* device, ID3D12Gra
         try {
             std::cout << "  Generating mesh for organism " << i << "/" << m_organisms.size() << "..." << std::endl;
             CreatureMeshData meshData = GenerateMeshForOrganism(m_organisms[i].get(), static_cast<int>(i));
-            meshData.position = DirectX::XMFLOAT3(xPos, 2.0f, 0.0f); // Elevated to be visible above ground
             
-            // Apply position transformation to vertices BEFORE uploading to GPU
-            std::cout << "    Applying position offset (" << meshData.position.x << ", " 
-                      << meshData.position.y << ", " << meshData.position.z << ") to vertices..." << std::endl;
-            for (auto& vertex : meshData.mesh.vertices) {
-                vertex.x += meshData.position.x;
-                vertex.y += meshData.position.y;
-                vertex.z += meshData.position.z;
-            }
+            // ENTITY ARCHITECTURE: Mesh stays in LOCAL SPACE (centered at origin)
+            // World transform (position) is stored separately and applied at render time via shader
+            meshData.position = DirectX::XMFLOAT3(xPos, 2.0f, 0.0f); // World position for entity
+            
+            std::cout << "    Mesh generated in local space, world position: (" 
+                      << meshData.position.x << ", " << meshData.position.y << ", " 
+                      << meshData.position.z << ")" << std::endl;
             
             // Initialize mesh renderer and upload to GPU
             meshData.meshRenderer = std::make_unique<Engine::Procedural::Mesh::ProceduralMeshRenderer>();
@@ -332,21 +330,35 @@ CreatureMeshData GeneticsIntegration::GenerateMeshForOrganism(
         params.headRadius = 0.3f * params.scaleFactor;
     }
     
-    // Step 2: Generate voxel grid with scalar field
+    // Step 2: NEW - Generate skeleton from genetics (Phase 7)
+    std::cout << "    Generating skeleton from genetics..." << std::endl;
+    result.skeleton = organism->GenerateSkeleton();
+    result.showSkeletonVisualization = false; // Default to hidden
+    
+    // Step 3: Generate voxel grid with scalar field
     std::cout << "    Allocating voxel grid..." << std::endl;
     int gridSize = 64; // Medium resolution
     Engine::Procedural::Voxel::VoxelGrid grid;
     grid.AllocateGrid(gridSize, gridSize, gridSize, 0.05f);
     
-    std::cout << "    Generating scalar field..." << std::endl;
-    m_scalarFieldGenerator.GenerateField(grid, params);
+    // NEW: Use skeleton-based scalar field if skeleton was generated
+    if (result.skeleton)
+    {
+        std::cout << "    Generating scalar field FROM SKELETON..." << std::endl;
+        m_scalarFieldGenerator.GenerateFieldFromSkeleton(grid, *result.skeleton, params);
+    }
+    else
+    {
+        std::cout << "    Generating scalar field (legacy mode)..." << std::endl;
+        m_scalarFieldGenerator.GenerateField(grid, params);
+    }
     
-    // Step 3: Run marching cubes to extract mesh
+    // Step 4: Run marching cubes to extract mesh
     std::cout << "    Running marching cubes..." << std::endl;
     float isovalue = 0.5f;
     result.mesh = m_marchingCubes.GenerateMesh(grid, isovalue);
     
-    // Step 3.5: Assign creature color to all vertices
+    // Step 4.5: Assign creature color to all vertices
     std::cout << "    Assigning creature color (" << result.color.x << ", " 
               << result.color.y << ", " << result.color.z << ") to " 
               << result.mesh.vertices.size() << " vertices..." << std::endl;
@@ -383,7 +395,8 @@ CreatureMeshData GeneticsIntegration::GenerateMeshForOrganism(
     }
     
     // Step 4: Optimize mesh if needed
-    uint32_t targetTriangles = 10000;
+    // Skeleton-generated meshes are more complex, allow higher triangle count
+    uint32_t targetTriangles = 30000; // Increased from 10000 for skeletal meshes
     if (result.mesh.indices.size() / 3 > targetTriangles) {
         std::cout << "    Optimizing mesh (target: " << targetTriangles << " triangles)..." << std::endl;
         result.mesh = m_meshOptimizer.SimplifyMesh(result.mesh, targetTriangles);

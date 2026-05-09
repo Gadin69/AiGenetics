@@ -2,6 +2,8 @@
 
 #include "CreatureParams.h"
 #include "../voxel/VoxelGrid.h"
+#include "../../animation/Skeleton.h"
+#include "../../animation/Bone.h"
 #include <DirectXMath.h>
 
 namespace Engine {
@@ -20,6 +22,11 @@ public:
     
     // Generate scalar field for entire voxel grid based on creature parameters
     void GenerateField(Voxel::VoxelGrid& grid, const CreatureParams& params);
+    
+    // NEW: Generate scalar field from skeleton (bones act as metaball attractors)
+    void GenerateFieldFromSkeleton(Voxel::VoxelGrid& grid, 
+                                    const Engine::Animation::Skeleton& skeleton,
+                                    const CreatureParams& params);
     
 private:
     // Main density function for creature shape
@@ -41,6 +48,15 @@ private:
     float SphereDensity(const DirectX::XMFLOAT3& pos, 
                        const DirectX::XMFLOAT3& center, 
                        float radius) const;
+    
+    // NEW: Skeleton-based density functions
+    float ComputeBoneDensity(const DirectX::XMFLOAT3& voxelPos, 
+                             const Engine::Animation::Bone& bone) const;
+    
+    float CylinderSDF(const DirectX::XMFLOAT3& pos,
+                      const DirectX::XMFLOAT3& boneStart,
+                      const DirectX::XMFLOAT3& boneEnd,
+                      float radius) const;
 };
 
 } // namespace Generation

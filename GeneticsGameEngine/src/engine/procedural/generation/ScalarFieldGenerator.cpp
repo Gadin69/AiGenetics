@@ -3,6 +3,14 @@
 #include <algorithm>
 #include <cmath>
 
+// Undefine windows.h max/min macros if defined
+#ifdef max
+#undef max
+#endif
+#ifdef min
+#undef min
+#endif
+
 namespace Engine {
 namespace Procedural {
 namespace Generation {
@@ -169,6 +177,139 @@ float ScalarFieldGenerator::SphereDensity(const DirectX::XMFLOAT3& pos,
     DirectX::XMVECTOR c = DirectX::XMLoadFloat3(&center);
     float dist = DirectX::XMVectorGetX(DirectX::XMVector3Length(DirectX::XMVectorSubtract(p, c)));
     return 1.0f - (dist / radius);
+}
+
+// NEW: Generate scalar field from skeleton (bones act as metaball attractors)
+void ScalarFieldGenerator::GenerateFieldFromSkeleton(
+    Voxel::VoxelGrid& grid,
+    const Engine::Animation::Skeleton& skeleton,
+    const CreatureParams& params)
+{
+    int sizeX = grid.GetSizeX();
+    int sizeY = grid.GetSizeY();
+    int sizeZ = grid.GetSizeZ();
+    float voxelSize = grid.GetVoxelSize();
+    
+    // Calculate offset to center the creature in the grid
+    float offsetX = -sizeX * voxelSize * 0.5f;
+    float offsetY = -sizeY * voxelSize * 0.5f;
+    float offsetZ = -sizeZ * voxelSize * 0.5f;
+    
+    const auto& bones = skeleton.GetBones();
+    
+    // Fill scalar field by computing distance to nearest bone at each voxel
+    for (int z = 0; z < sizeZ; ++z) {
+        for (int y = 0; y < sizeY; ++y) {
+            for (int x = 0; x < sizeX; ++x) {
+                // Convert voxel coordinates to world space
+                DirectX::XMFLOAT3 voxelPos(
+                    x * voxelSize + offsetX,
+                    y * voxelSize + offsetY,
+                    z * voxelSize + offsetZ
+                );
+                
+                // Compute density from all bones (metaball-style summation)
+                float density = 0.0f;
+                for (const auto& bone : bones)
+                {
+                    float boneDensity = ComputeBoneDensity(voxelPos, bone);
+                    density += boneDensity;
+                }
+                
+                // Store in scalar field
+                grid.SetScalarField(x, y, z, density);
+            }
+        }
+    }
+}
+
+// Compute density contribution from a single bone
+float ScalarFieldGenerator::ComputeBoneDensity(
+    const DirectX::XMFLOAT3& voxelPos,
+    const Engine::Animation::Bone& bone) const
+{
+    // Get bone's world-space position from transform matrix
+    DirectX::XMFLOAT3 bonePos = {
+        bone.worldTransform._41,
+        bone.worldTransform._42,
+        bone.worldTransform._43
+    };
+    
+    // Bone thickness (average of width and height)
+    float boneRadius = (bone.boneLength.y + bone.boneLength.z) * 0.5f;
+    
+    // Bone length direction (Z axis in local space, transformed to world)
+    DirectX::XMFLOAT3 boneDir = {
+        bone.worldTransform._31,
+        bone.worldTransform._32,
+        bone.worldTransform._33
+    };
+    
+    // Compute bone endpoint
+    DirectX::XMFLOAT3 boneEnd = {
+        bonePos.x + boneDir.x * bone.boneLength.x,
+        bonePos.y + boneDir.y * bone.boneLength.x,
+        bonePos.z + boneDir.z * bone.boneLength.x
+    };
+    
+    // Use cylinder SDF for bone density
+    return CylinderSDF(voxelPos, bonePos, boneEnd, boneRadius);
+}
+
+// Cylinder signed distance function
+float ScalarFieldGenerator::CylinderSDF(
+    const DirectX::XMFLOAT3& pos,
+    const DirectX::XMFLOAT3& boneStart,
+    const DirectX::XMFLOAT3& boneEnd,
+    float radius) const
+{
+    // Cylinder axis
+    DirectX::XMFLOAT3 axis = {
+        boneEnd.x - boneStart.x,
+        boneEnd.y - boneStart.y,
+        boneEnd.z - boneStart.z
+    };
+    
+    float axisLength = std::sqrt(axis.x * axis.x + axis.y * axis.y + axis.z * axis.z);
+    if (axisLength < 0.001f) return 0.0f; // Degenerate bone
+    
+    // Normalize axis
+    axis.x /= axisLength;
+    axis.y /= axisLength;
+    axis.z /= axisLength;
+    
+    // Vector from bone start to point
+    DirectX::XMFLOAT3 toPoint = {
+        pos.x - boneStart.x,
+        pos.y - boneStart.y,
+        pos.z - boneStart.z
+    };
+    
+    // Project point onto axis
+    float projection = toPoint.x * axis.x + toPoint.y * axis.y + toPoint.z * axis.z;
+    
+    // Clamp projection to bone length
+    projection = std::max(0.0f, std::min(projection, axisLength));
+    
+    // Closest point on cylinder axis
+    DirectX::XMFLOAT3 closestPoint = {
+        boneStart.x + axis.x * projection,
+        boneStart.y + axis.y * projection,
+        boneStart.z + axis.z * projection
+    };
+    
+    // Distance from point to closest point on axis
+    DirectX::XMFLOAT3 distVec = {
+        pos.x - closestPoint.x,
+        pos.y - closestPoint.y,
+        pos.z - closestPoint.z
+    };
+    
+    float distance = std::sqrt(distVec.x * distVec.x + distVec.y * distVec.y + distVec.z * distVec.z);
+    
+    // Density falls off with distance (metaball-style)
+    float falloff = radius * 2.0f; // Influence radius
+    return std::max(0.0f, 1.0f - (distance / falloff));
 }
 
 } // namespace Generation

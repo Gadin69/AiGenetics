@@ -18,6 +18,7 @@ class GraphicsEngine;
 #include "../engine/genetics/expression/GeneticExpression.h"
 #include "../engine/genetics/breeding/BreedingSystem.h"
 #include "../engine/genetics/breeding/MutationEngine.h"
+#include "../engine/animation/Skeleton.h"
 
 // Phase 3: Procedural mesh generation includes
 #include "../engine/procedural/voxel/VoxelGrid.h"
@@ -60,6 +61,10 @@ struct CreatureMeshData {
     
     // Phase 5: PBR material
     GeneticsGameEngine::Rendering::MaterialID materialID;
+    
+    // Phase 7: Skeleton (NEW)
+    std::unique_ptr<Engine::Animation::Skeleton> skeleton;
+    bool showSkeletonVisualization; // Toggle for debug visualization
 };
 
 class GeneticsIntegration

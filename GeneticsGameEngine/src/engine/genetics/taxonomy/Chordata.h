@@ -2,6 +2,9 @@
 
 #include "./Animal.h"
 #include "../expression/GeneticExpression.h"
+#include "../../animation/Skeleton.h"
+#include "../../animation/ChordataSkeletonGenerator.h"
+#include <memory>
 
 namespace Engine {
 namespace Genetics {
@@ -33,6 +36,21 @@ public:
     void ApplyGeneticExpression(const Genome& genome) override {
         // Use the centralized GeneticExpression system
         Engine::Genetics::Expression::GeneticExpression::ApplyToOrganism(*this, genome);
+    }
+    
+    // NEW: Generate skeleton from genetics (polymorphic)
+    std::unique_ptr<Engine::Animation::Skeleton> GenerateSkeleton() const {
+        Engine::Animation::ChordataSkeletonGenerator generator;
+        
+        // Build creature params from genetic data
+        Engine::Procedural::Generation::CreatureParams params;
+        params.scaleFactor = m_scale;
+        params.limbCount = m_limbCount;
+        // Additional parameters can be mapped from genes here
+        
+        return std::make_unique<Engine::Animation::Skeleton>(
+            generator.GenerateSkeleton(m_genome, params)
+        );
     }
 };
 

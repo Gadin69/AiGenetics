@@ -1,6 +1,8 @@
 #pragma once
 
 #include "../genome/Genome.h"
+#include "../../animation/Skeleton.h"
+#include "../../procedural/generation/CreatureParams.h"
 #include <string>
 #include <vector>
 #include <memory>
@@ -26,6 +28,9 @@ public:
     virtual void ApplyGeneticExpression(const Genome& genome) = 0;
     virtual std::vector<Genome> BreedWith(const Organism& other) const = 0;
     virtual void ApplyMutation(float mutationRate) = 0;
+    
+    // NEW: Generate skeleton from genetics (Phase 7)
+    virtual std::unique_ptr<Engine::Animation::Skeleton> GenerateSkeleton() const = 0;
     
     // Getters
     const Genome& GetGenome() const { return m_genome; }

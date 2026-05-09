@@ -6,6 +6,10 @@ set(ENGINE_SOURCES
     rendering/materials/pbr/PBRMaterial.cpp
     rendering/materials/pbr/MaterialSystem.cpp
     rendering/textures/ProceduralTextureGenerator.cpp
+    animation/Skeleton.cpp
+    animation/ChordataSkeletonGenerator.cpp
+    animation/ArthropodaSkeletonGenerator.cpp
+    animation/MolluscaSkeletonGenerator.cpp
 )
 
 # Add engine headers
@@ -39,6 +43,12 @@ set(ENGINE_HEADERS
     genetics/expression/GeneticExpression.h
     genetics/breeding/BreedingSystem.h
     genetics/breeding/MutationEngine.h
+    animation/Bone.h
+    animation/Skeleton.h
+    animation/SkeletonGenerator.h
+    animation/ChordataSkeletonGenerator.h
+    animation/ArthropodaSkeletonGenerator.h
+    animation/MolluscaSkeletonGenerator.h
 )
 
 # Create engine library

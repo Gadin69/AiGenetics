@@ -46,6 +46,12 @@ public:
         return nullptr;
     }
     
+    // Get gene value by locus ID (returns 0.0f if gene doesn't exist)
+    float GetGeneValue(uint16_t locusID) const {
+        const Gene* gene = GetGene(locusID);
+        return gene ? gene->alleleValue : 0.0f;
+    }
+    
     // Get all chromosomes
     const std::vector<Chromosome>& GetChromosomes() const {
         return m_chromosomes;

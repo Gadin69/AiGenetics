@@ -5,6 +5,7 @@
 #include "../../../third_party/imgui/imgui.h"
 #include "../../genetics/GeneticsIntegration.h"
 #include "../rendering/camera/CameraTypes.h"
+#include "../../animation/Skeleton.h"
 
 namespace Engine {
 namespace UI {
@@ -44,6 +45,9 @@ public:
     
     bool IsGraphicsPanelVisible() const { return m_showGraphicsPanel; }
     void SetGraphicsPanelVisible(bool visible) { m_showGraphicsPanel = visible; }
+    
+    bool IsSkeletonPanelVisible() const { return m_showSkeletonPanel; }
+    void SetSkeletonPanelVisible(bool visible) { m_showSkeletonPanel = visible; }
 
 private:
     // Panel visibility toggles
@@ -52,6 +56,7 @@ private:
     bool m_showCreaturePanel = false;
     bool m_showDebugPanel = false;
     bool m_showGraphicsPanel = false;
+    bool m_showSkeletonPanel = false;
     
     // Quit callback
     std::function<void()> m_quitCallback;
@@ -64,6 +69,7 @@ private:
     void RenderCreaturePanel(GeneticsIntegration* geneticsIntegration);
     void RenderDebugPanel(GeneticsIntegration* geneticsIntegration, int frameCount);
     void RenderGraphicsPanel();
+    void RenderSkeletonPanel(GeneticsIntegration* geneticsIntegration);
 };
 
 } // namespace UI
