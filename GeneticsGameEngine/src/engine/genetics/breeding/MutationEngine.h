@@ -89,6 +89,27 @@ public:
         return genome;
     }
     
+    // Generate a random genome with a specific seed (for reproducibility)
+    static Genome GenerateRandomGenomeWithSeed(const std::string& genomeID,
+                                               const std::vector<uint16_t>& locusIDs,
+                                               uint32_t seed) {
+        Genome genome(genomeID);
+        Chromosome chromosome(1); // Single chromosome for simplicity
+        
+        // Create seeded random generator
+        std::mt19937 gen(seed);
+        std::uniform_real_distribution<float> valueDist(0.0f, 1.0f);
+        std::uniform_int_distribution<int> domDist(0, 2);
+        
+        for (uint16_t locusID : locusIDs) {
+            Gene gene(locusID, valueDist(gen), static_cast<DominanceType>(domDist(gen)));
+            chromosome.AddGene(gene);
+        }
+        
+        genome.AddChromosome(chromosome);
+        return genome;
+    }
+    
 private:
     // Determine if mutation should occur based on rate
     static bool ShouldMutate(float mutationRate) {

@@ -1,5 +1,6 @@
 #include "UIManager.h"
 #include "../../../genetics/GeneticsIntegration.h"
+#include <iostream>
 
 // Undefine windows.h max/min macros if defined (from Skeleton.h include chain)
 #ifdef max
@@ -19,7 +20,8 @@ void UIManager::RenderPanels(
     GeneticsIntegration* geneticsIntegration,
     Engine::Rendering::BaseCameraController* camera,
     int frameCount,
-    bool& wireframeMode
+    bool& wireframeMode,
+    GraphicsEngine* graphicsEngine
 ) {
     // Main Control Panel (always visible)
     if (m_showControlPanel)
@@ -42,7 +44,7 @@ void UIManager::RenderPanels(
     // Debug Panel
     if (m_showDebugPanel)
     {
-        RenderDebugPanel(geneticsIntegration, frameCount);
+        RenderDebugPanel(geneticsIntegration, frameCount, graphicsEngine);
     }
     
     // Graphics Options Panel
@@ -116,7 +118,7 @@ void UIManager::RenderCreaturePanel(GeneticsIntegration* geneticsIntegration)
     ImGui::End();
 }
 
-void UIManager::RenderDebugPanel(GeneticsIntegration* geneticsIntegration, int frameCount)
+void UIManager::RenderDebugPanel(GeneticsIntegration* geneticsIntegration, int frameCount, GraphicsEngine* graphicsEngine)
 {
     ImGui::Begin("Debug Panel", &m_showDebugPanel);
     ImGui::Text("Performance:");
@@ -126,6 +128,57 @@ void UIManager::RenderDebugPanel(GeneticsIntegration* geneticsIntegration, int f
     
     ImGui::Text("Scene:");
     ImGui::Text("  Creatures: %zu", geneticsIntegration->GetCreatureMeshes().size());
+    
+    ImGui::Separator();
+    ImGui::Text("Creature Generation:");
+    
+    // Seed input for reproducible creature generation
+    static int seed = 0;
+    static bool useRandomSeed = true;
+    
+    ImGui::Checkbox("Random Seed on Startup", &useRandomSeed);
+    if (useRandomSeed)
+    {
+        ImGui::Text("  Current seed: Auto-generated (random)");
+    }
+    else
+    {
+        ImGui::InputInt("Seed", &seed);
+        ImGui::Text("  Same seed = same creatures");
+    }
+    
+    ImGui::Spacing();
+    
+    // Regenerate creatures button
+    if (ImGui::Button("Regenerate Creatures (New Random)", ImVec2(-1, 0)))
+    {
+        if (graphicsEngine && graphicsEngine->GetDevice())
+        {
+            // Generate a new random seed
+            seed = static_cast<int>(std::rand());
+            useRandomSeed = false;
+            
+            std::cout << "[UI] Regenerating creatures with random seed: " << seed << std::endl;
+            geneticsIntegration->RegenerateCreaturesWithSeed(
+                static_cast<uint32_t>(seed),
+                graphicsEngine->GetDevice(),
+                graphicsEngine->GetCommandList()
+            );
+        }
+    }
+    
+    if (ImGui::Button("Regenerate Creatures (Current Seed)", ImVec2(-1, 0)))
+    {
+        if (graphicsEngine && graphicsEngine->GetDevice())
+        {
+            std::cout << "[UI] Regenerating creatures with seed: " << seed << std::endl;
+            geneticsIntegration->RegenerateCreaturesWithSeed(
+                static_cast<uint32_t>(seed),
+                graphicsEngine->GetDevice(),
+                graphicsEngine->GetCommandList()
+            );
+        }
+    }
     
     ImGui::Separator();
     ImGui::Text("Mesh Generation Controls:");

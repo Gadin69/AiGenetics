@@ -120,6 +120,9 @@ public:
     // Regenerate all meshes with custom parameters
     void RegenerateMeshes(float voxelSize, float falloffMultiplier);
     
+    // Regenerate creatures with a specific seed
+    void RegenerateCreaturesWithSeed(uint32_t seed, ID3D12Device* device, ID3D12GraphicsCommandList* commandList);
+    
 private:
     DirectX::XMFLOAT4 GetColorFromIndex(int index);
     CreatureMeshData GenerateMeshForOrganism(const Engine::Genetics::Taxonomy::Organism* organism, int index);

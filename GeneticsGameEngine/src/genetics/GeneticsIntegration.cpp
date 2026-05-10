@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <DirectXMath.h>
 #include <chrono>
+#include <cstdlib>
 
 // Phase 4: Neural system namespace
 namespace Neural = Engine::Neural;
@@ -15,6 +16,14 @@ namespace Breeding = Engine::Genetics::Breeding;
 
 // Define locus IDs for creature genomes
 static const std::vector<uint16_t> CREATURE_LOCUS_IDS = {
+    // Skeleton structure genes (used by skeleton generators)
+    0x1001, // Chordata: vertebra count
+    0x1100, // Arthropoda: thorax segments
+    0x1101, // Arthropoda: abdomen segments
+    0x1102, // Arthropoda: wing presence
+    0x1300, // Mollusca: shell gene
+    0x1301, // Mollusca: shell spiral turns
+    // Material/appearance genes (used by expression system)
     0x1A2B, // Scale
     0x3C4D, // Color
     0x5E6F, // Limb count
@@ -27,6 +36,7 @@ static const std::vector<uint16_t> CREATURE_LOCUS_IDS = {
     0x9A0B, // Shell spiral
     0x1C2D, // Shell thickness
     0x3E4F  // Mantle texture
+    // NOTE: Appendage genes (0x2000+) are added dynamically in RegenerateCreaturesWithSeed
 };
 
 // Implementation for genetics integration
@@ -35,8 +45,14 @@ bool GeneticsIntegration::Initialize()
     std::cout << "\n=== Phase 2: Genetics System Integration ==="  << std::endl;
     std::cout << "Initializing genetics system..." << std::endl;
     
-    // Create sample creatures
-    CreateSampleCreatures();
+    // Generate a random seed based on current time for variety on each run
+    uint32_t randomSeed = static_cast<uint32_t>(
+        std::chrono::system_clock::now().time_since_epoch().count() & 0xFFFFFFFF);
+    
+    std::cout << "[Random Seed] Using seed: " << randomSeed << " (time-based)" << std::endl;
+    
+    // Create sample creatures with random seed
+    RegenerateCreaturesWithSeed(randomSeed, nullptr, nullptr);
     
     // Test breeding system
     TestBreedingSystem();
@@ -381,13 +397,90 @@ CreatureMeshData GeneticsIntegration::GenerateMeshForOrganismWithParams(
     float isovalue = 0.5f;
     result.mesh = m_marchingCubes.GenerateMesh(grid, isovalue);
     
-    // Step 4.5: Assign creature color to all vertices
-    std::cout << "    Assigning creature color (" << result.color.x << ", " 
-              << result.color.y << ", " << result.color.z << ") to " 
-              << result.mesh.vertices.size() << " vertices..." << std::endl;
-    result.mesh.colors.resize(result.mesh.vertices.size(), result.color);
+    // Step 4.5: Assign creature color to vertices, with darker head region
+    // CRITICAL: Check if mesh has vertices before proceeding
+    if (result.mesh.vertices.empty()) {
+        std::cerr << "    WARNING: Mesh has no vertices, skipping color assignment" << std::endl;
+        result.mesh.colors.clear();
+    } else {
+        std::cout << "    Assigning creature colors (darker head) to " 
+                  << result.mesh.vertices.size() << " vertices..." << std::endl;
+        
+        result.mesh.colors.resize(result.mesh.vertices.size());
+        
+        // Get head position from skeleton or params
+        DirectX::XMFLOAT3 headPos = params.headCenter;
+        float headRadius = params.headRadius * 2.0f; // Generous radius to cover entire head
+        
+        // If we have a skeleton, use the actual head bone position
+        if (result.skeleton) {
+            const auto& bones = result.skeleton->GetBones();
+            for (const auto& bone : bones) {
+                if (bone.name.find("Head") != std::string::npos) {
+                    headPos = {
+                        bone.worldTransform._41,
+                        bone.worldTransform._42,
+                        bone.worldTransform._43
+                    };
+                    // Use bone dimensions to determine head size
+                    headRadius = (std::max)(bone.boneLength.x, (std::max)(bone.boneLength.y, bone.boneLength.z));
+                    std::cout << "    Head bone found at (" << headPos.x << ", " << headPos.y << ", " << headPos.z 
+                              << ") with radius " << headRadius << std::endl;
+                    break;
+                }
+            }
+        }
+        
+        // CRITICAL: Validate headRadius to prevent infinite loops or incorrect coloring
+        if (headRadius <= 0.0f || std::isnan(headRadius)) {
+            std::cerr << "    WARNING: Invalid headRadius (" << headRadius << "), using fallback" << std::endl;
+            headRadius = 0.5f; // Safe fallback
+        }
+        
+        // Color each vertex based on distance to head
+        int headVertexCount = 0;
+        for (size_t i = 0; i < result.mesh.vertices.size(); ++i) {
+            const auto& vertex = result.mesh.vertices[i];
+            
+            // Calculate distance from vertex to head center
+            float dx = vertex.x - headPos.x;
+            float dy = vertex.y - headPos.y;
+            float dz = vertex.z - headPos.z;
+            float distanceToHead = std::sqrt(dx*dx + dy*dy + dz*dz);
+            
+            if (distanceToHead <= headRadius) {
+                // Head region - use darker color (40% of original brightness)
+                result.mesh.colors[i] = DirectX::XMFLOAT4(
+                    result.color.x * 0.4f,
+                    result.color.y * 0.4f,
+                    result.color.z * 0.4f,
+                    1.0f
+                );
+                headVertexCount++;
+            } else {
+                // Body region - use original color
+                result.mesh.colors[i] = DirectX::XMFLOAT4(
+                    result.color.x,
+                    result.color.y,
+                    result.color.z,
+                    1.0f
+                );
+            }
+        }
+        
+        // CRITICAL: Prevent division by zero
+        if (result.mesh.vertices.size() > 0) {
+            std::cout << "    Head vertices: " << headVertexCount << " / " << result.mesh.vertices.size() 
+                      << " (" << (100.0f * headVertexCount / result.mesh.vertices.size()) << "%)" << std::endl;
+        }
+    }
     
-    std::cout << "    Mesh extracted: " << result.mesh.vertices.size() << " vertices, " << result.mesh.indices.size() / 3 << " triangles" << std::endl;
+    if (result.mesh.vertices.empty()) {
+        std::cerr << "    WARNING: Mesh extraction produced no vertices!" << std::endl;
+    } else {
+        std::cout << "    Mesh extracted: " << result.mesh.vertices.size() << " vertices, " 
+                  << result.mesh.indices.size() / 3 << " triangles" << std::endl;
+    }
     
     // DEBUG: Print first 5 vertices to check if they're spread out or collapsed
     if (result.mesh.vertices.size() > 0) {
@@ -808,4 +901,129 @@ void GeneticsIntegration::RegenerateMeshes(float voxelSize, float falloffMultipl
     CloseHandle(fenceEvent);
     
     std::cout << "[RegenerateMeshes] Generated and uploaded " << m_creatureMeshes.size() << " creature meshes." << std::endl;
+}
+
+// Regenerate creatures with a specific seed
+void GeneticsIntegration::RegenerateCreaturesWithSeed(uint32_t seed, ID3D12Device* device, ID3D12GraphicsCommandList* commandList)
+{
+    std::cout << "\n=== Regenerating Creatures with Seed: " << seed << " ===" << std::endl;
+    
+    // Clear existing organisms and meshes
+    m_organisms.clear();
+    m_creatureMeshes.clear();
+    
+    // Define locus IDs for creature genomes
+    std::vector<uint16_t> CREATURE_LOCUS_IDS = {
+        // Skeleton structure genes (used by skeleton generators)
+        0x1001, // Chordata: vertebra count
+        0x1100, // Arthropoda: thorax segments
+        0x1101, // Arthropoda: abdomen segments
+        0x1102, // Arthropoda: wing presence
+        0x1300, // Mollusca: shell gene
+        0x1301, // Mollusca: shell spiral turns
+        // Material/appearance genes (used by expression system)
+        0x1A2B, // Scale
+        0x3C4D, // Color
+        0x5E6F, // Limb count
+        0x7A8B, // Skeletal density / Exoskeleton thickness
+        0x9C0D, // Skin roughness / Segment count
+        0x1E2F, // Skin metallic / Joint flexibility
+        0x3A4B, // Exoskeleton thickness
+        0x5C6D, // Segment count
+        0x7E8F, // Joint flexibility
+        0x9A0B, // Shell spiral
+        0x1C2D, // Shell thickness
+        0x3E4F  // Mantle texture
+    };
+    
+    // Add Chordata appendage genes (15 vertebrae × 5 slots = 75 genes)
+    // Each vertebra has 5 attachment slots: DORSAL, LEFT_LATERAL, RIGHT_LATERAL, VENTRAL_LEFT, VENTRAL_RIGHT
+    // Gene locus = 0x2000 + (vertebraIndex * 10) + slotIndex
+    for (int vertebra = 0; vertebra < 15; ++vertebra) {
+        for (int slot = 0; slot < 5; ++slot) {
+            uint16_t locusID = 0x2000 + (vertebra * 10) + slot;
+            CREATURE_LOCUS_IDS.push_back(locusID);
+        }
+    }
+    
+    // Add limb segment count genes (uniform per limb type across organism)
+    // 0x3000: Leg segments, 0x3001: Arm segments, 0x3002: Wing segments, etc.
+    CREATURE_LOCUS_IDS.push_back(0x3000); // Leg segment count
+    CREATURE_LOCUS_IDS.push_back(0x3001); // Arm segment count
+    CREATURE_LOCUS_IDS.push_back(0x3002); // Wing segment count
+    CREATURE_LOCUS_IDS.push_back(0x3003); // Fin segment count
+    CREATURE_LOCUS_IDS.push_back(0x3004); // Antenna segment count
+    CREATURE_LOCUS_IDS.push_back(0x3005); // Tail segment count
+    
+    std::cout << "[Genome] Total locus IDs: " << CREATURE_LOCUS_IDS.size() << std::endl;
+    std::cout << "[Genome] Appendage genes: 0x2000-0x2096 (75 genes)" << std::endl;
+    
+    // Create seeded random generator for creature parameters
+    std::mt19937 rng(seed);
+    std::uniform_real_distribution<float> scaleDist(0.8f, 1.5f);
+    
+    // Create Chordata creature
+    {
+        // Generate genome with seed (each creature gets different seed derived from base seed)
+        Engine::Genetics::Genome chordataGenome = Breeding::MutationEngine::GenerateRandomGenomeWithSeed(
+            "Chordata_001_Genome", CREATURE_LOCUS_IDS, seed + 1);
+        
+        auto chordata = std::make_unique<Engine::Genetics::Taxonomy::Chordata>();
+        chordata->SetID("Chordata_001");
+        chordata->SetGenome(chordataGenome); // Store genome for skeleton generation
+        chordata->ApplyGeneticExpression(chordataGenome);
+        
+        // Apply random scale variation
+        float scale = scaleDist(rng);
+        chordata->SetScale(scale);
+        
+        std::cout << "Created Chordata creature: " << chordata->GetID() 
+                  << " (Scale: " << scale << ")" << std::endl;
+        
+        m_organisms.push_back(std::move(chordata));
+    }
+    
+    // Create Arthropoda creature
+    {
+        Engine::Genetics::Genome arthropodaGenome = Breeding::MutationEngine::GenerateRandomGenomeWithSeed(
+            "Arthropoda_001_Genome", CREATURE_LOCUS_IDS, seed + 2);
+        
+        auto arthropoda = std::make_unique<Engine::Genetics::Taxonomy::Arthropoda>();
+        arthropoda->SetID("Arthropoda_001");
+        arthropoda->SetGenome(arthropodaGenome); // Store genome for skeleton generation
+        arthropoda->ApplyGeneticExpression(arthropodaGenome);
+        
+        float scale = scaleDist(rng);
+        arthropoda->SetScale(scale);
+        
+        std::cout << "Created Arthropoda creature: " << arthropoda->GetID()
+                  << " (Scale: " << scale << ")" << std::endl;
+        
+        m_organisms.push_back(std::move(arthropoda));
+    }
+    
+    // Create Mollusca creature
+    {
+        Engine::Genetics::Genome molluscaGenome = Breeding::MutationEngine::GenerateRandomGenomeWithSeed(
+            "Mollusca_001_Genome", CREATURE_LOCUS_IDS, seed + 3);
+        
+        auto mollusca = std::make_unique<Engine::Genetics::Taxonomy::Mollusca>();
+        mollusca->SetID("Mollusca_001");
+        mollusca->SetGenome(molluscaGenome); // Store genome for skeleton generation
+        mollusca->ApplyGeneticExpression(molluscaGenome);
+        
+        float scale = scaleDist(rng);
+        mollusca->SetScale(scale);
+        
+        std::cout << "Created Mollusca creature: " << mollusca->GetID()
+                  << " (Scale: " << scale << ")" << std::endl;
+        
+        m_organisms.push_back(std::move(mollusca));
+    }
+    
+    // Regenerate meshes only if device is provided
+    if (device && commandList)
+    {
+        GenerateCreatureMeshes(device, commandList);
+    }
 }

@@ -53,11 +53,20 @@ private:
     
     void GenerateAppendage(Skeleton& skeleton, int parentBoneIndex,
                           AppendageType type, AttachmentSlot slot,
-                          float length, int vertebraIndex);
+                          float length, int vertebraIndex,
+                          const Engine::Genetics::Genome& genome);
     
     void GenerateLimbBone(Skeleton& skeleton, const std::string& name,
                          int parentIndex, DirectX::XMFLOAT3 position,
                          DirectX::XMFLOAT3 length, float rotationOffset = 0.0f);
+    
+    // NEW: Multi-segment limb generation
+    int GetLimbSegmentCount(const Engine::Genetics::Genome& genome, AppendageType type) const;
+    void GenerateMultiSegmentLimb(Skeleton& skeleton, const std::string& baseName,
+                                  int parentIndex, DirectX::XMFLOAT3 startPosition,
+                                  DirectX::XMFLOAT3 boneLength, float rotation,
+                                  AppendageType type, int segmentCount, int vertebraIndex, int slotIndex,
+                                  DirectX::XMFLOAT3 growthDirection);
     
     void GenerateSensoryOrgan(Skeleton& skeleton, const std::string& name,
                              int parentIndex, DirectX::XMFLOAT3 position,

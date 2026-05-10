@@ -7,6 +7,9 @@
 #include "../rendering/camera/CameraTypes.h"
 #include "../../animation/Skeleton.h"
 
+// Forward declaration
+class GraphicsEngine;
+
 namespace Engine {
 namespace UI {
 
@@ -21,7 +24,8 @@ public:
         GeneticsIntegration* geneticsIntegration,
         Engine::Rendering::BaseCameraController* camera,
         int frameCount,
-        bool& wireframeMode
+        bool& wireframeMode,
+        GraphicsEngine* graphicsEngine = nullptr
     );
 
     // Set quit callback
@@ -67,7 +71,7 @@ private:
     // Individual panel renderers
     void RenderControlPanel(bool& wireframeMode);
     void RenderCreaturePanel(GeneticsIntegration* geneticsIntegration);
-    void RenderDebugPanel(GeneticsIntegration* geneticsIntegration, int frameCount);
+    void RenderDebugPanel(GeneticsIntegration* geneticsIntegration, int frameCount, GraphicsEngine* graphicsEngine);
     void RenderGraphicsPanel();
     void RenderSkeletonPanel(GeneticsIntegration* geneticsIntegration);
 };

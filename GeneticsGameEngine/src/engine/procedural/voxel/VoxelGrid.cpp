@@ -5,7 +5,7 @@ namespace Engine {
 namespace Procedural {
 namespace Voxel {
 
-VoxelGrid::VoxelGrid() : m_sizeX(0), m_sizeY(0), m_sizeZ(0), m_voxelSize(0.1f) {
+VoxelGrid::VoxelGrid() : m_sizeX(0), m_sizeY(0), m_sizeZ(0), m_voxelSize(0.1f), m_useAdaptiveResolution(false) {
 }
 
 VoxelGrid::~VoxelGrid() {
@@ -28,6 +28,7 @@ void VoxelGrid::AllocateGrid(int sizeX, int sizeY, int sizeZ, float voxelSize) {
     size_t totalVoxels = static_cast<size_t>(sizeX) * sizeY * sizeZ;
     m_data.resize(totalVoxels);
     m_scalarField.resize(totalVoxels, 0.0f);
+    m_resolutionField.resize(totalVoxels, 1.0f); // Default: 1.0x resolution (base)
 }
 
 // Convenience method for cubic grids
@@ -103,6 +104,7 @@ void VoxelGrid::Clear() {
         voxel.density = 0.0f;
     }
     std::fill(m_scalarField.begin(), m_scalarField.end(), 0.0f);
+    std::fill(m_resolutionField.begin(), m_resolutionField.end(), 1.0f);
 }
 
 size_t VoxelGrid::GetScalarFieldSizeBytes() const {
@@ -111,6 +113,27 @@ size_t VoxelGrid::GetScalarFieldSizeBytes() const {
 
 size_t VoxelGrid::GetVoxelDataSizeBytes() const {
     return m_data.size() * sizeof(Voxel);
+}
+
+// Adaptive resolution methods
+void VoxelGrid::SetResolutionMultiplier(int x, int y, int z, float multiplier) {
+    if (!IsValidPosition(x, y, z)) {
+        return;
+    }
+    size_t index = CalculateIndex(x, y, z, m_sizeX, m_sizeY);
+    m_resolutionField[index] = multiplier;
+}
+
+float VoxelGrid::GetResolutionMultiplier(int x, int y, int z) const {
+    if (!IsValidPosition(x, y, z)) {
+        return 1.0f;
+    }
+    size_t index = CalculateIndex(x, y, z, m_sizeX, m_sizeY);
+    return m_resolutionField[index];
+}
+
+const float* VoxelGrid::GetResolutionFieldPointer() const {
+    return m_resolutionField.data();
 }
 
 } // namespace Voxel

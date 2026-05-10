@@ -1,4 +1,6 @@
 #include "Skeleton.h"
+#include <algorithm>
+#include <cmath>
 #include <DirectXMath.h>
 #include <algorithm>
 
@@ -69,6 +71,41 @@ void Skeleton::ComputeBoneTransformsRecursive(int32_t boneIndex, const XMFLOAT4X
     XMMATRIX parentWorld = XMLoadFloat4x4(&parentWorldMatrix);
     XMMATRIX worldMatrix = parentWorld * localMatrix;
     XMStoreFloat4x4(&bone.worldTransform, worldMatrix);
+    
+    // Compute world endpoint (where this bone ends)
+    // Extract world position from transform
+    XMVECTOR worldPos = XMVectorSet(
+        bone.worldTransform._41,
+        bone.worldTransform._42,
+        bone.worldTransform._43,
+        0.0f
+    );
+    
+    // Determine the primary growth axis (longest dimension)
+    float maxX = std::abs(bone.boneLength.x);
+    float maxY = std::abs(bone.boneLength.y);
+    float maxZ = std::abs(bone.boneLength.z);
+    
+    // Calculate endpoint based on primary axis
+    XMVECTOR worldEndpoint;
+    if (maxY >= maxX && maxY >= maxZ) {
+        // Y is primary axis (spine, vertical limbs)
+        worldEndpoint = XMVectorSet(worldPos.m128_f32[0], 
+                                    worldPos.m128_f32[1] + bone.boneLength.y, 
+                                    worldPos.m128_f32[2], 0.0f);
+    } else if (maxX >= maxY && maxX >= maxZ) {
+        // X is primary axis (horizontal limbs)
+        worldEndpoint = XMVectorSet(worldPos.m128_f32[0] + bone.boneLength.x, 
+                                    worldPos.m128_f32[1], 
+                                    worldPos.m128_f32[2], 0.0f);
+    } else {
+        // Z is primary axis (forward-growing limbs)
+        worldEndpoint = XMVectorSet(worldPos.m128_f32[0], 
+                                    worldPos.m128_f32[1], 
+                                    worldPos.m128_f32[2] + bone.boneLength.z, 0.0f);
+    }
+    
+    XMStoreFloat3(&bone.worldEndpoint, worldEndpoint);
     
     // Recursively compute children
     if (boneIndex >= 0 && boneIndex < static_cast<int32_t>(m_children.size()))

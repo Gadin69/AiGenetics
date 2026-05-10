@@ -371,7 +371,8 @@ void GraphicsEngine::Render(std::unique_ptr<GeneticsIntegration>& geneticsIntegr
                 geneticsIntegration.get(),
                 camera,
                 frameCount,
-                m_wireframeMode
+                m_wireframeMode,
+                this
             );
         }
         

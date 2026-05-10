@@ -39,6 +39,7 @@ struct Bone {
     // Computed world-space transforms (updated each frame)
     DirectX::XMFLOAT4X4 localTransform;
     DirectX::XMFLOAT4X4 worldTransform;
+    DirectX::XMFLOAT3 worldEndpoint; // Where this bone ends in world space (for SDF continuity)
     
     Bone() : parentIndex(-1), 
              localPosition{0.0f, 0.0f, 0.0f},
@@ -47,7 +48,8 @@ struct Bone {
              mass(1.0f),
              forwardAxis{0.0f, 0.0f, 1.0f},  // Default: +Z is forward
              upAxis{0.0f, 1.0f, 0.0f},       // Default: +Y is up
-             rightAxis{1.0f, 0.0f, 0.0f}     // Default: +X is right 
+             rightAxis{1.0f, 0.0f, 0.0f},    // Default: +X is right
+             worldEndpoint{0.0f, 0.0f, 0.0f}
     {
         // Initialize transforms to identity (zero out, then set diagonal)
         for (int i = 0; i < 4; i++)

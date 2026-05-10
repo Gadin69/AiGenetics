@@ -70,8 +70,8 @@ void ArthropodaSkeletonGenerator::GenerateThoraxSegments(
     for (int i = 0; i < segmentCount; ++i)
     {
         std::string name = "Thorax_" + std::to_string(i);
-        XMFLOAT3 position = {0.0f, -segmentLength, 0.0f}; // Relative offset from parent (DOWN in Y)
-        XMFLOAT3 length = {0.35f * segmentLength, segmentLength * 0.95f, 0.25f * segmentLength}; // Thicker segments
+        XMFLOAT3 position = {segmentLength, 0.0f, 0.0f}; // Relative offset from parent (forward along X axis)
+        XMFLOAT3 length = {segmentLength * 0.95f, 0.35f * segmentLength, 0.25f * segmentLength}; // X is length axis (horizontal)
         
         int parentIndex = i; // Head is index 0, first thorax is index 1
         skeleton.AddBone(CreateBone(name, position, length, parentIndex), parentIndex);
@@ -87,8 +87,8 @@ void ArthropodaSkeletonGenerator::GenerateAbdomenSegments(
     for (int i = 0; i < segmentCount; ++i)
     {
         std::string name = "Abdomen_" + std::to_string(i);
-        XMFLOAT3 position = {0.0f, -segmentLength, 0.0f}; // Down in Y
-        XMFLOAT3 length = {0.18f * segmentLength, segmentLength * 0.9f, 0.12f * segmentLength}; // Y is length
+        XMFLOAT3 position = {segmentLength, 0.0f, 0.0f}; // Forward along X axis
+        XMFLOAT3 length = {segmentLength * 0.9f, 0.18f * segmentLength, 0.12f * segmentLength}; // X is length axis
         
         skeleton.AddBone(CreateBone(name, position, length, parentIndex), parentIndex);
         parentIndex = static_cast<int>(skeleton.GetBoneCount()) - 1;
@@ -103,8 +103,8 @@ void ArthropodaSkeletonGenerator::GenerateLegPair(
     // Left leg
     {
         std::string name = "Leg_Left_" + std::to_string(legIndex);
-        XMFLOAT3 position = {0.25f, -0.05f, 0.0f};
-        XMFLOAT3 length = {0.05f, 0.05f, legLength};
+        XMFLOAT3 position = {0.0f, 0.0f, 0.25f}; // Left side (positive Z)
+        XMFLOAT3 length = {0.05f, legLength, 0.05f}; // Y is leg length (pointing down)
         
         skeleton.AddBone(CreateBone(name, position, length, attachmentIndex), attachmentIndex);
     }
@@ -112,8 +112,8 @@ void ArthropodaSkeletonGenerator::GenerateLegPair(
     // Right leg
     {
         std::string name = "Leg_Right_" + std::to_string(legIndex);
-        XMFLOAT3 position = {-0.25f, -0.05f, 0.0f};
-        XMFLOAT3 length = {0.05f, 0.05f, legLength};
+        XMFLOAT3 position = {0.0f, 0.0f, -0.25f}; // Right side (negative Z)
+        XMFLOAT3 length = {0.05f, legLength, 0.05f}; // Y is leg length (pointing down)
         
         skeleton.AddBone(CreateBone(name, position, length, attachmentIndex), attachmentIndex);
     }
@@ -125,8 +125,8 @@ void ArthropodaSkeletonGenerator::GenerateWingPair(
     // Left wing
     {
         std::string name = "Wing_Left_" + std::to_string(wingIndex);
-        XMFLOAT3 position = {0.3f, 0.1f, 0.0f};
-        XMFLOAT3 length = {0.03f, 0.03f, wingLength};
+        XMFLOAT3 position = {0.0f, 0.3f, 0.0f}; // Dorsal (positive Y)
+        XMFLOAT3 length = {0.03f, 0.03f, wingLength}; // Z is wing span
         
         skeleton.AddBone(CreateBone(name, position, length, attachmentIndex), attachmentIndex);
     }
@@ -134,8 +134,8 @@ void ArthropodaSkeletonGenerator::GenerateWingPair(
     // Right wing
     {
         std::string name = "Wing_Right_" + std::to_string(wingIndex);
-        XMFLOAT3 position = {-0.3f, 0.1f, 0.0f};
-        XMFLOAT3 length = {0.03f, 0.03f, wingLength};
+        XMFLOAT3 position = {0.0f, 0.3f, 0.0f}; // Dorsal (positive Y)
+        XMFLOAT3 length = {0.03f, 0.03f, -wingLength}; // Opposite Z direction
         
         skeleton.AddBone(CreateBone(name, position, length, attachmentIndex), attachmentIndex);
     }

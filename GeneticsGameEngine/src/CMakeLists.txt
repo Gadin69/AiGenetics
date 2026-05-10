@@ -90,30 +90,47 @@ if(MSVC)
     )
 endif()
 
-# Copy shader files to output directory (configuration-specific)
-add_custom_command(TARGET GeneticsGameEngine POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${CMAKE_CURRENT_SOURCE_DIR}/graphics/vertex.hlsl"
-        "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/$<CONFIG>/vertex.hlsl"
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${CMAKE_CURRENT_SOURCE_DIR}/graphics/pixel.hlsl"
-        "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/$<CONFIG>/pixel.hlsl"
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${CMAKE_CURRENT_SOURCE_DIR}/../shaders/PBRCommon.hlsl"
-        "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/$<CONFIG>/PBRCommon.hlsl"
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${CMAKE_CURRENT_SOURCE_DIR}/../shaders/PBRVertex.hlsl"
-        "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/$<CONFIG>/PBRVertex.hlsl"
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${CMAKE_CURRENT_SOURCE_DIR}/../shaders/PBRPixel.hlsl"
-        "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/$<CONFIG>/PBRPixel.hlsl"
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${CMAKE_CURRENT_SOURCE_DIR}/graphics/SkyDomeVertex.hlsl"
-        "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/$<CONFIG>/SkyDomeVertex.hlsl"
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${CMAKE_CURRENT_SOURCE_DIR}/graphics/SkyDomePixel.hlsl"
-        "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/$<CONFIG>/SkyDomePixel.hlsl"
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${CMAKE_CURRENT_SOURCE_DIR}/graphics/ShadowVS.hlsl"
-        "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/$<CONFIG>/ShadowVS.hlsl"
-    COMMENT "Copying shader files to output directory")
+# Copy ALL shader files to output directory automatically
+# This ensures shaders are always in sync with the executable
+
+# Define the actual output directory (matches root CMakeLists.txt setting)
+set(SHADER_OUTPUT_DIR "${CMAKE_BINARY_DIR}/bin/$<CONFIG>")
+
+# Step 1: Copy graphics shaders from src/graphics/
+file(GLOB GRAPHICS_SHADERS "${CMAKE_CURRENT_SOURCE_DIR}/graphics/*.hlsl")
+foreach(shader ${GRAPHICS_SHADERS})
+    get_filename_component(shader_name ${shader} NAME)
+    add_custom_command(TARGET GeneticsGameEngine POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${SHADER_OUTPUT_DIR}"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${shader}"
+            "${SHADER_OUTPUT_DIR}/${shader_name}"
+        COMMENT "Copying shader: ${shader_name}"
+    )
+endforeach()
+
+# Step 2: Copy engine shaders from src/shaders/
+file(GLOB ENGINE_SHADERS "${CMAKE_CURRENT_SOURCE_DIR}/shaders/*.hlsl")
+foreach(shader ${ENGINE_SHADERS})
+    get_filename_component(shader_name ${shader} NAME)
+    add_custom_command(TARGET GeneticsGameEngine POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${SHADER_OUTPUT_DIR}"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${shader}"
+            "${SHADER_OUTPUT_DIR}/${shader_name}"
+        COMMENT "Copying shader: ${shader_name}"
+    )
+endforeach()
+
+# Step 3: Copy root-level shaders from shaders/ (if any)
+file(GLOB ROOT_SHADERS "${CMAKE_CURRENT_SOURCE_DIR}/../shaders/*.hlsl")
+foreach(shader ${ROOT_SHADERS})
+    get_filename_component(shader_name ${shader} NAME)
+    add_custom_command(TARGET GeneticsGameEngine POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${SHADER_OUTPUT_DIR}"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${shader}"
+            "${SHADER_OUTPUT_DIR}/${shader_name}"
+        COMMENT "Copying shader: ${shader_name}"
+    )
+endforeach()

@@ -27,6 +27,10 @@ private:
     std::vector<float> m_scalarField;   // Scalar field for marching cubes input
     int m_sizeX, m_sizeY, m_sizeZ;
     float m_voxelSize;                  // Physical size of each voxel
+    
+    // Adaptive voxel density support
+    std::vector<float> m_resolutionField; // Resolution multiplier per voxel (1.0 = base, <1.0 = finer, >1.0 = coarser)
+    bool m_useAdaptiveResolution;         // Flag to enable adaptive resolution
 
 public:
     VoxelGrid();
@@ -78,6 +82,13 @@ public:
     // Get total size in bytes (for GPU buffer allocation)
     size_t GetScalarFieldSizeBytes() const;
     size_t GetVoxelDataSizeBytes() const;
+    
+    // Adaptive resolution methods
+    void EnableAdaptiveResolution(bool enable) { m_useAdaptiveResolution = enable; }
+    bool IsAdaptiveResolutionEnabled() const { return m_useAdaptiveResolution; }
+    void SetResolutionMultiplier(int x, int y, int z, float multiplier);
+    float GetResolutionMultiplier(int x, int y, int z) const;
+    const float* GetResolutionFieldPointer() const;
 };
 
 } // namespace Voxel

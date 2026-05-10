@@ -1,5 +1,6 @@
 #include "ScalarFieldGenerator.h"
 #include "../voxel/VoxelGrid.h"
+#include "../../animation/Skeleton.h"
 #include <algorithm>
 #include <cmath>
 
@@ -180,6 +181,184 @@ float ScalarFieldGenerator::SphereDensity(const DirectX::XMFLOAT3& pos,
 }
 
 // NEW: Generate scalar field from skeleton (bones act as metaball attractors)
+// Helper: Calculate joint position between parent and child bones
+static DirectX::XMFLOAT3 CalculateJointPosition(
+    const Engine::Animation::Bone& parent,
+    const Engine::Animation::Bone& child)
+{
+    // Joint is at parent's endpoint (which should equal child's start)
+    // Use average to handle any small misalignment
+    DirectX::XMFLOAT3 jointPos = {
+        (parent.worldEndpoint.x + child.worldTransform._41) * 0.5f,
+        (parent.worldEndpoint.y + child.worldTransform._42) * 0.5f,
+        (parent.worldEndpoint.z + child.worldTransform._43) * 0.5f
+    };
+    return jointPos;
+}
+
+// Helper: Calculate appropriate joint radius
+static float CalculateJointRadius(
+    const Engine::Animation::Bone& parent,
+    const Engine::Animation::Bone& child)
+{
+    // Average the bone radii, then scale up slightly to ensure overlap
+    float parentRadius = (parent.boneLength.x + parent.boneLength.y + parent.boneLength.z) / 3.0f;
+    float childRadius = (child.boneLength.x + child.boneLength.y + child.boneLength.z) / 3.0f;
+    float avgRadius = (parentRadius + childRadius) * 0.5f;
+    
+    // Scale up by 1.2x (reduced from 1.5x) - just enough to guarantee connectivity
+    return avgRadius * 1.2f;
+}
+
+// Helper: Test if a voxel position is inside a bone (binary test, no SDF)
+static bool IsVoxelInsideBone(
+    const DirectX::XMFLOAT3& voxelPos,
+    const Engine::Animation::Bone& bone,
+    Engine::Procedural::Generation::ArchetypeType archetype)
+{
+    // Get bone's world-space position
+    DirectX::XMFLOAT3 bonePos = {
+        bone.worldTransform._41,
+        bone.worldTransform._42,
+        bone.worldTransform._43
+    };
+    
+    // Bone radius (average dimension)
+    float boneRadius = (bone.boneLength.x + bone.boneLength.y + bone.boneLength.z) / 3.0f;
+    
+    // Compute bone endpoint
+    DirectX::XMFLOAT3 boneEnd = bone.worldEndpoint;
+    
+    // If worldEndpoint not computed (fallback), calculate from boneLength
+    if (boneEnd.x == 0.0f && boneEnd.y == 0.0f && boneEnd.z == 0.0f && bone.parentIndex != -1) {
+        float maxX = std::abs(bone.boneLength.x);
+        float maxY = std::abs(bone.boneLength.y);
+        float maxZ = std::abs(bone.boneLength.z);
+        
+        if (maxY >= maxX && maxY >= maxZ)
+            boneEnd = { bonePos.x, bonePos.y + bone.boneLength.y, bonePos.z };
+        else if (maxX >= maxY && maxX >= maxZ)
+            boneEnd = { bonePos.x + bone.boneLength.x, bonePos.y, bonePos.z };
+        else
+            boneEnd = { bonePos.x, bonePos.y, bonePos.z + bone.boneLength.z };
+    }
+    
+    // Test based on archetype
+    switch (archetype)
+    {
+        case Engine::Procedural::Generation::ArchetypeType::Chordata:
+        {
+            // Capsule: distance to line segment <= radius
+            DirectX::XMFLOAT3 ab = { boneEnd.x - bonePos.x, boneEnd.y - bonePos.y, boneEnd.z - bonePos.z };
+            DirectX::XMFLOAT3 ap = { voxelPos.x - bonePos.x, voxelPos.y - bonePos.y, voxelPos.z - bonePos.z };
+            
+            float abLenSq = ab.x * ab.x + ab.y * ab.y + ab.z * ab.z;
+            if (abLenSq < 0.0001f) {
+                // Degenerate capsule (point), test sphere
+                float distSq = ap.x * ap.x + ap.y * ap.y + ap.z * ap.z;
+                return distSq <= boneRadius * boneRadius;
+            }
+            
+            float t = (ap.x * ab.x + ap.y * ab.y + ap.z * ab.z) / abLenSq;
+            t = std::clamp(t, 0.0f, 1.0f);
+            
+            DirectX::XMFLOAT3 closest = {
+                bonePos.x + t * ab.x,
+                bonePos.y + t * ab.y,
+                bonePos.z + t * ab.z
+            };
+            
+            DirectX::XMFLOAT3 diff = {
+                voxelPos.x - closest.x,
+                voxelPos.y - closest.y,
+                voxelPos.z - closest.z
+            };
+            float distSq = diff.x * diff.x + diff.y * diff.y + diff.z * diff.z;
+            return distSq <= boneRadius * boneRadius;
+        }
+        
+        case Engine::Procedural::Generation::ArchetypeType::Arthropoda:
+        {
+            // Cylinder: same as capsule but with flat ends
+            DirectX::XMFLOAT3 ab = { boneEnd.x - bonePos.x, boneEnd.y - bonePos.y, boneEnd.z - bonePos.z };
+            DirectX::XMFLOAT3 ap = { voxelPos.x - bonePos.x, voxelPos.y - bonePos.y, voxelPos.z - bonePos.z };
+            
+            float abLenSq = ab.x * ab.x + ab.y * ab.y + ab.z * ab.z;
+            if (abLenSq < 0.0001f) {
+                float distSq = ap.x * ap.x + ap.y * ap.y + ap.z * ap.z;
+                return distSq <= boneRadius * boneRadius;
+            }
+            
+            float t = (ap.x * ab.x + ap.y * ab.y + ap.z * ab.z) / abLenSq;
+            
+            // For cylinder, t must be in [0, 1] (no rounding at ends)
+            if (t < 0.0f || t > 1.0f) return false;
+            
+            DirectX::XMFLOAT3 closest = {
+                bonePos.x + t * ab.x,
+                bonePos.y + t * ab.y,
+                bonePos.z + t * ab.z
+            };
+            
+            DirectX::XMFLOAT3 diff = {
+                voxelPos.x - closest.x,
+                voxelPos.y - closest.y,
+                voxelPos.z - closest.z
+            };
+            float distSq = diff.x * diff.x + diff.y * diff.y + diff.z * diff.z;
+            return distSq <= boneRadius * boneRadius;
+        }
+        
+        case Engine::Procedural::Generation::ArchetypeType::Mollusca:
+        {
+            // Sphere at midpoint (metaball approximation)
+            DirectX::XMFLOAT3 center = {
+                (bonePos.x + boneEnd.x) * 0.5f,
+                (bonePos.y + boneEnd.y) * 0.5f,
+                (bonePos.z + boneEnd.z) * 0.5f
+            };
+            
+            DirectX::XMFLOAT3 diff = {
+                voxelPos.x - center.x,
+                voxelPos.y - center.y,
+                voxelPos.z - center.z
+            };
+            float distSq = diff.x * diff.x + diff.y * diff.y + diff.z * diff.z;
+            return distSq <= boneRadius * boneRadius; // No 1.3x multiplier for binary test
+        }
+        
+        default:
+        {
+            // Fallback to capsule test
+            DirectX::XMFLOAT3 ab = { boneEnd.x - bonePos.x, boneEnd.y - bonePos.y, boneEnd.z - bonePos.z };
+            DirectX::XMFLOAT3 ap = { voxelPos.x - bonePos.x, voxelPos.y - bonePos.y, voxelPos.z - bonePos.z };
+            
+            float abLenSq = ab.x * ab.x + ab.y * ab.y + ab.z * ab.z;
+            if (abLenSq < 0.0001f) {
+                float distSq = ap.x * ap.x + ap.y * ap.y + ap.z * ap.z;
+                return distSq <= boneRadius * boneRadius;
+            }
+            
+            float t = (ap.x * ab.x + ap.y * ab.y + ap.z * ab.z) / abLenSq;
+            t = std::clamp(t, 0.0f, 1.0f);
+            
+            DirectX::XMFLOAT3 closest = {
+                bonePos.x + t * ab.x,
+                bonePos.y + t * ab.y,
+                bonePos.z + t * ab.z
+            };
+            
+            DirectX::XMFLOAT3 diff = {
+                voxelPos.x - closest.x,
+                voxelPos.y - closest.y,
+                voxelPos.z - closest.z
+            };
+            float distSq = diff.x * diff.x + diff.y * diff.y + diff.z * diff.z;
+            return distSq <= boneRadius * boneRadius;
+        }
+    }
+}
+
 void ScalarFieldGenerator::GenerateFieldFromSkeleton(
     Voxel::VoxelGrid& grid,
     const Engine::Animation::Skeleton& skeleton,
@@ -233,6 +412,38 @@ void ScalarFieldGenerator::GenerateFieldFromSkeleton(
     maxY += padding;
     maxZ += padding;
     
+    // NEW: Collect joint positions and radii for all parent-child connections
+    struct JointInfo {
+        DirectX::XMFLOAT3 position;
+        float radius;
+    };
+    std::vector<JointInfo> joints;
+    
+    for (size_t i = 0; i < bones.size(); ++i)
+    {
+        if (bones[i].parentIndex >= 0 && bones[i].parentIndex < static_cast<int32_t>(bones.size()))
+        {
+            const Engine::Animation::Bone& parent = bones[bones[i].parentIndex];
+            const Engine::Animation::Bone& child = bones[i];
+            
+            JointInfo joint;
+            joint.position = CalculateJointPosition(parent, child);
+            joint.radius = CalculateJointRadius(parent, child);
+            
+            joints.push_back(joint);
+            
+            // Expand bounds to include joint spheres
+            minX = std::min(minX, joint.position.x - joint.radius);
+            minY = std::min(minY, joint.position.y - joint.radius);
+            minZ = std::min(minZ, joint.position.z - joint.radius);
+            maxX = std::max(maxX, joint.position.x + joint.radius);
+            maxY = std::max(maxY, joint.position.y + joint.radius);
+            maxZ = std::max(maxZ, joint.position.z + joint.radius);
+        }
+    }
+    
+    printf("  [DEBUG ScalarField] Added %zu joint spheres for connectivity\n", joints.size());
+    
     // Calculate grid center and offset
     float centerX = (minX + maxX) * 0.5f;
     float centerY = (minY + maxY) * 0.5f;
@@ -246,9 +457,15 @@ void ScalarFieldGenerator::GenerateFieldFromSkeleton(
     printf("  [DEBUG ScalarField] Bounds: (%.2f, %.2f, %.2f) to (%.2f, %.2f, %.2f), Center: (%.2f, %.2f, %.2f)\n",
            minX, minY, minZ, maxX, maxY, maxZ, centerX, centerY, centerZ);
     
-    // DEBUG: Print first 5 bone world positions and parent indices to understand hierarchy
-    printf("  [DEBUG BoneTransforms] Total bones: %zu\n", bones.size());
-    for (size_t i = 0; i < bones.size() && i < 5; i++)
+    // DEBUG: Print ALL bone world positions and parent indices to see limb bones
+    static bool showedAllBones = false;
+    bool showAllBones = !showedAllBones; // Show all bones for first creature only
+    if (showAllBones) showedAllBones = true;
+    
+    printf("  [DEBUG BoneTransforms] Total bones: %zu%s\n", bones.size(), showAllBones ? " (showing all)" : "");
+    
+    size_t maxBonesToShow = showAllBones ? bones.size() : 5;
+    for (size_t i = 0; i < bones.size() && i < maxBonesToShow; i++)
     {
         DirectX::XMFLOAT3 worldPos = {
             bones[i].worldTransform._41,
@@ -262,27 +479,124 @@ void ScalarFieldGenerator::GenerateFieldFromSkeleton(
                worldPos.x, worldPos.y, worldPos.z);
     }
     
-    // Calculate adaptive scaling factor based on bone count
-    // More bones = more density summation = need smaller individual contributions
-    // Target: keep maximum density around 1.0-2.0 for proper isosurface extraction
-    // Adjusted for 1.5x radius falloff (tighter blending needs higher base density)
-    float boneCount = static_cast<float>(bones.size());
-    float adaptiveScale = 3.0f / (boneCount * 0.5f); // Higher base for tighter falloff
+    // Calculate bone statistics for debugging only (no adaptive scaling)
+    float minBoneRadius = 999.0f;
+    float maxBoneRadius = 0.0f;
+    float avgBoneRadius = 0.0f;
+    for (const auto& bone : bones)
+    {
+        float radius = (bone.boneLength.x + bone.boneLength.y + bone.boneLength.z) / 3.0f;
+        minBoneRadius = std::min(minBoneRadius, radius);
+        maxBoneRadius = std::max(maxBoneRadius, radius);
+        avgBoneRadius += radius;
+    }
+    avgBoneRadius /= bones.size();
     
-    printf("  [DEBUG ScalarField] Bone count: %zu, Adaptive scale: %.3f\n", bones.size(), adaptiveScale);
+    // NO ADAPTIVE SCALING - use actual bone dimensions directly
+    // The boneLength values from the skeleton generator already define the correct size
+    float adaptiveScale = 1.0f; // No scaling - bones are already the right size
     
-    // NEW: Fill scalar field using smooth SDF union (not linear summation)
-    float minDensity = 999.0f;
-    float maxDensity = -999.0f;
-    int aboveIsovalue = 0;
-    int belowIsovalue = 0;
+    printf("  [DEBUG ScalarField] Bone radius range: [%.3f, %.3f], Avg: %.3f, Scale: %.3f (no scaling)\n", 
+           minBoneRadius, maxBoneRadius, avgBoneRadius, adaptiveScale);
     
-    // Get archetype blend smoothness from params
-    float blendK = params.blendSmoothness; // 0.05=hard (Arthropoda), 0.3=smooth (Chordata), 0.5=very smooth (Mollusca)
+    // ADAPTIVE VOXEL DENSITY: Compute resolution multiplier field
+    // - Fine resolution (0.5x) near joints and bone endpoints (high curvature areas)
+    // - Base resolution (1.0x) near bone surfaces
+    // - Coarse resolution (2.0x) in empty space far from creature
+    bool useAdaptiveDensity = true;
+    int refinedVoxels = 0;
+    int coarsenedVoxels = 0;
     
-    // Calculate bounding box size to normalize SDF values
-    float boundingSize = std::max({maxX - minX, maxY - minY, maxZ - minZ});
-    float sdfScale = 2.0f / boundingSize; // Scale SDF so creature fills the grid properly
+    if (useAdaptiveDensity)
+    {
+        grid.EnableAdaptiveResolution(true);
+        
+        for (int z = 0; z < sizeZ; ++z) {
+            for (int y = 0; y < sizeY; ++y) {
+                for (int x = 0; x < sizeX; ++x) {
+                    DirectX::XMFLOAT3 voxelPos(
+                        x * voxelSize + offsetX,
+                        y * voxelSize + offsetY,
+                        z * voxelSize + offsetZ
+                    );
+                    
+                    // Compute minimum distance to any joint
+                    float minJointDist = 999.0f;
+                    for (const auto& joint : joints)
+                    {
+                        DirectX::XMFLOAT3 diff = {
+                            voxelPos.x - joint.position.x,
+                            voxelPos.y - joint.position.y,
+                            voxelPos.z - joint.position.z
+                        };
+                        float dist = std::sqrt(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z);
+                        minJointDist = std::min(minJointDist, dist);
+                    }
+                    
+                    // Compute minimum distance to any bone surface
+                    float minBoneSurfaceDist = 999.0f;
+                    for (const auto& bone : bones)
+                    {
+                        DirectX::XMFLOAT3 bonePos = {
+                            bone.worldTransform._41,
+                            bone.worldTransform._42,
+                            bone.worldTransform._43
+                        };
+                        float boneRadius = (bone.boneLength.x + bone.boneLength.y + bone.boneLength.z) / 3.0f;
+                        
+                        DirectX::XMFLOAT3 diff = {
+                            voxelPos.x - bonePos.x,
+                            voxelPos.y - bonePos.y,
+                            voxelPos.z - bonePos.z
+                        };
+                        float distToCenter = std::sqrt(diff.x * diff.x + diff.y * diff.y + diff.z * diff.z);
+                        float distToSurface = std::abs(distToCenter - boneRadius);
+                        minBoneSurfaceDist = std::min(minBoneSurfaceDist, distToSurface);
+                    }
+                    
+                    // Adaptive resolution logic:
+                    // - Very close to joints (< 0.3 units): 0.5x resolution (2x finer)
+                    // - Close to joints (< 0.6 units): 0.7x resolution
+                    // - Near bone surfaces (< 0.2 units): 0.8x resolution
+                    // - Far from everything (> 1.0 units): 1.5x resolution (coarser)
+                    float resolutionMultiplier = 1.0f;
+                    
+                    if (minJointDist < 0.3f)
+                    {
+                        resolutionMultiplier = 0.5f; // 2x finer near joints
+                        refinedVoxels++;
+                    }
+                    else if (minJointDist < 0.6f)
+                    {
+                        resolutionMultiplier = 0.7f;
+                        refinedVoxels++;
+                    }
+                    else if (minBoneSurfaceDist < 0.2f)
+                    {
+                        resolutionMultiplier = 0.8f;
+                        refinedVoxels++;
+                    }
+                    else if (minBoneSurfaceDist > 1.0f && minJointDist > 1.0f)
+                    {
+                        resolutionMultiplier = 1.5f; // 1.5x coarser in empty space
+                        coarsenedVoxels++;
+                    }
+                    
+                    grid.SetResolutionMultiplier(x, y, z, resolutionMultiplier);
+                }
+            }
+        }
+        
+        printf("  [DEBUG AdaptiveResolution] Refined: %d voxels, Coarsened: %d voxels\n", 
+               refinedVoxels, coarsenedVoxels);
+    }
+    
+    // DIRECT BINARY VOXELIZATION: Test if each voxel is inside any bone or joint
+    // No blending, no normalization - just solid where bones are, empty where they're not
+    // ADAPTIVE: Use resolution multiplier to determine sampling density
+    int voxelsSolid = 0;
+    int voxelsEmpty = 0;
+    int subVoxelSamples = 0;
     
     for (int z = 0; z < sizeZ; ++z) {
         for (int y = 0; y < sizeY; ++y) {
@@ -294,41 +608,148 @@ void ScalarFieldGenerator::GenerateFieldFromSkeleton(
                     z * voxelSize + offsetZ
                 );
                 
-                // Compute SDF from all bones using SMOOTH UNION
-                // Start with far-away distance (positive = outside)
-                float sdf = 999.0f;
-                for (const auto& bone : bones)
+                // Get resolution multiplier for this voxel
+                float resolutionMult = 1.0f;
+                if (grid.IsAdaptiveResolutionEnabled())
                 {
-                    float boneSDF = ComputeBoneSDF(voxelPos, bone, adaptiveScale, params.archetype);
-                    sdf = SmoothUnion(sdf, boneSDF, blendK);
+                    resolutionMult = grid.GetResolutionMultiplier(x, y, z);
                 }
                 
-                // Scale SDF to ensure it crosses the 0.5 isovalue
-                // Positive SDF = outside (should be < 0.5 density)
-                // Negative SDF = inside (should be > 0.5 density)
-                sdf *= sdfScale;
+                // Determine number of sub-voxel samples based on resolution
+                // - 0.5x resolution = 2x2x2 = 8 samples
+                // - 0.7x resolution = 2x2x2 = 8 samples
+                // - 0.8x resolution = 1x1x1 = 1 sample
+                // - 1.0x resolution = 1x1x1 = 1 sample
+                // - 1.5x resolution = 1x1x1 = 1 sample (skip detail)
+                int samplesPerAxis = 1;
+                if (resolutionMult <= 0.5f)
+                    samplesPerAxis = 3; // 27 samples for high detail
+                else if (resolutionMult <= 0.7f)
+                    samplesPerAxis = 2; // 8 samples for medium detail
+                else if (resolutionMult <= 0.8f)
+                    samplesPerAxis = 2; // 8 samples for surface detail
                 
-                // Convert SDF to density convention (negative inside = solid)
-                // Invert: negative SDF (inside) becomes positive density
-                // Add offset to center the range around 0.5
-                float density = -sdf + 0.5f;
+                float subVoxelSize = voxelSize / samplesPerAxis;
                 
-                // Track density range
-                minDensity = std::min(minDensity, density);
-                maxDensity = std::max(maxDensity, density);
-                if (density > 0.5f) aboveIsovalue++;
-                else belowIsovalue++;
+                // Test if voxel is inside ANY bone using sub-voxel sampling
+                bool isInside = false;
+                int samplesInside = 0;
+                int totalSamples = 0;
                 
-                // Store in scalar field
+                for (int sz = 0; sz < samplesPerAxis; ++sz) {
+                    for (int sy = 0; sy < samplesPerAxis; ++sy) {
+                        for (int sx = 0; sx < samplesPerAxis; ++sx) {
+                            DirectX::XMFLOAT3 samplePos(
+                                voxelPos.x + (sx - (samplesPerAxis - 1) * 0.5f) * subVoxelSize,
+                                voxelPos.y + (sy - (samplesPerAxis - 1) * 0.5f) * subVoxelSize,
+                                voxelPos.z + (sz - (samplesPerAxis - 1) * 0.5f) * subVoxelSize
+                            );
+                            
+                            totalSamples++;
+                            subVoxelSamples++;
+                            
+                            // Check all bones
+                            bool sampleInside = false;
+                            for (const auto& bone : bones)
+                            {
+                                if (IsVoxelInsideBone(samplePos, bone, params.archetype))
+                                {
+                                    sampleInside = true;
+                                    break;
+                                }
+                            }
+                            
+                            // Check all joint spheres if not already inside a bone
+                            if (!sampleInside)
+                            {
+                                for (const auto& joint : joints)
+                                {
+                                    DirectX::XMFLOAT3 toCenter = {
+                                        samplePos.x - joint.position.x,
+                                        samplePos.y - joint.position.y,
+                                        samplePos.z - joint.position.z
+                                    };
+                                    float dist = std::sqrt(
+                                        toCenter.x * toCenter.x + 
+                                        toCenter.y * toCenter.y + 
+                                        toCenter.z * toCenter.z
+                                    );
+                                    if (dist <= joint.radius)
+                                    {
+                                        sampleInside = true;
+                                        break;
+                                    }
+                                }
+                            }
+                            
+                            if (sampleInside)
+                                samplesInside++;
+                        }
+                    }
+                }
+                
+                // Determine final density based on sample ratio
+                // For adaptive resolution: require higher sample ratio for coarse voxels
+                // to avoid false positives in empty space
+                float sampleRatio = static_cast<float>(samplesInside) / totalSamples;
+                float threshold = (resolutionMult > 1.0f) ? 0.5f : 0.3f;
+                
+                float density = (sampleRatio >= threshold) ? 1.0f : 0.0f;
+                
+                if (density > 0.5f) voxelsSolid++;
+                else voxelsEmpty++;
+                
                 grid.SetScalarField(x, y, z, density);
             }
         }
     }
     
     // Debug output
-    printf("  [DEBUG ScalarField] Density range: [%.3f, %.3f]\n", minDensity, maxDensity);
-    printf("  [DEBUG ScalarField] Voxels above isovalue(0.5): %d, below: %d (total: %d)\n", 
-           aboveIsovalue, belowIsovalue, sizeX * sizeY * sizeZ);
+    printf("  [DEBUG ScalarField] Voxels: %d solid (bones/joints), %d empty (total: %d)\n", 
+           voxelsSolid, voxelsEmpty, sizeX * sizeY * sizeZ);
+    printf("  [DEBUG ScalarField] Sub-voxel samples: %d (avg %.1f per voxel)\n",
+           subVoxelSamples, static_cast<float>(subVoxelSamples) / (sizeX * sizeY * sizeZ));
+    
+    // PASS 2: Smoothing pass - blend edges for organic look
+    // Create a copy of the scalar field to read from while we write smoothed values
+    const float* originalData = grid.GetScalarFieldPointer();
+    std::vector<float> originalField(originalData, originalData + (sizeX * sizeY * sizeZ));
+    int smoothedCount = 0;
+    
+    for (int z = 1; z < sizeZ - 1; ++z) {
+        for (int y = 1; y < sizeY - 1; ++y) {
+            for (int x = 1; x < sizeX - 1; ++x) {
+                // Only smooth boundary voxels (where density is 0 or 1)
+                float currentDensity = originalField[(z * sizeY + y) * sizeX + x];
+                
+                // Skip if already in the middle range (already smoothed)
+                if (currentDensity > 0.05f && currentDensity < 0.95f)
+                    continue;
+                
+                // Average with 26 neighbors (3x3x3 kernel excluding center)
+                float sum = 0.0f;
+                int count = 0;
+                
+                for (int dz = -1; dz <= 1; ++dz) {
+                    for (int dy = -1; dy <= 1; ++dy) {
+                        for (int dx = -1; dx <= 1; ++dx) {
+                            if (dx == 0 && dy == 0 && dz == 0)
+                                continue; // Skip center
+                            
+                            sum += originalField[((z + dz) * sizeY + (y + dy)) * sizeX + (x + dx)];
+                            count++;
+                        }
+                    }
+                }
+                
+                float smoothedDensity = sum / count;
+                grid.SetScalarField(x, y, z, smoothedDensity);
+                smoothedCount++;
+            }
+        }
+    }
+    
+    printf("  [DEBUG ScalarField] Smoothed %d boundary voxels for organic blending\n", smoothedCount);
 }
 
 // Compute SDF contribution from a single bone (returns true signed distance)
@@ -346,25 +767,31 @@ float ScalarFieldGenerator::ComputeBoneSDF(
     };
     
     // Bone thickness (use average dimension)
-    float boneRadius = (bone.boneLength.x + bone.boneLength.y + bone.boneLength.z) / 4.0f;
-    boneRadius *= adaptiveScale; // Apply adaptive scaling
+    // Use 3.0f divisor to match the radius calculation in GenerateFieldFromSkeleton
+    float boneRadius = (bone.boneLength.x + bone.boneLength.y + bone.boneLength.z) / 3.0f;
+    boneRadius *= adaptiveScale; // Apply adaptive scaling (now 1.0 = no scaling)
     
     // Apply falloff multiplier to control metaball influence radius
     // Higher falloff = thicker/blended meshes, Lower falloff = thinner/defined meshes
     float effectiveRadius = boneRadius * m_falloffMultiplier;
     
     // Compute bone endpoint (growth direction)
-    DirectX::XMFLOAT3 boneEnd = bonePos;
-    float maxX = std::abs(bone.boneLength.x);
-    float maxY = std::abs(bone.boneLength.y);
-    float maxZ = std::abs(bone.boneLength.z);
+    // Use pre-computed worldEndpoint for parent-child continuity
+    DirectX::XMFLOAT3 boneEnd = bone.worldEndpoint;
     
-    if (maxY >= maxX && maxY >= maxZ)
-        boneEnd = { bonePos.x, bonePos.y + bone.boneLength.y, bonePos.z };
-    else if (maxX >= maxY && maxX >= maxZ)
-        boneEnd = { bonePos.x + bone.boneLength.x, bonePos.y, bonePos.z };
-    else
-        boneEnd = { bonePos.x, bonePos.y, bonePos.z + bone.boneLength.z };
+    // If worldEndpoint not computed (fallback), calculate from boneLength
+    if (boneEnd.x == 0.0f && boneEnd.y == 0.0f && boneEnd.z == 0.0f && bone.parentIndex != -1) {
+        float maxX = std::abs(bone.boneLength.x);
+        float maxY = std::abs(bone.boneLength.y);
+        float maxZ = std::abs(bone.boneLength.z);
+        
+        if (maxY >= maxX && maxY >= maxZ)
+            boneEnd = { bonePos.x, bonePos.y + bone.boneLength.y, bonePos.z };
+        else if (maxX >= maxY && maxX >= maxZ)
+            boneEnd = { bonePos.x + bone.boneLength.x, bonePos.y, bonePos.z };
+        else
+            boneEnd = { bonePos.x, bonePos.y, bonePos.z + bone.boneLength.z };
+    }
     
     // Archetype-specific SDF primitive
     switch (archetype)
@@ -378,13 +805,14 @@ float ScalarFieldGenerator::ComputeBoneSDF(
             return CylinderSDF(voxelPos, bonePos, boneEnd, effectiveRadius, 1.0f);
             
         case ArchetypeType::Mollusca:
-            // Soft metaball for hydrostatic skeleton (2x radius for blobby look)
+            // Soft metaball for hydrostatic skeleton
+            // Reduced from 2.0x to 1.3x - joint spheres handle connectivity, not oversized bones
             DirectX::XMFLOAT3 center = {
                 (bonePos.x + boneEnd.x) * 0.5f,
                 (bonePos.y + boneEnd.y) * 0.5f,
                 (bonePos.z + boneEnd.z) * 0.5f
             };
-            return MetaballSDF(voxelPos, center, effectiveRadius * 2.0f);
+            return MetaballSDF(voxelPos, center, effectiveRadius * 1.3f);
             
         default:
             // Fallback to capsule

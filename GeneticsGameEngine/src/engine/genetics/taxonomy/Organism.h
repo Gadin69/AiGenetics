@@ -43,6 +43,7 @@ public:
     void SetID(const std::string& id) { m_organismID = id; }
     void SetScale(float scale) { m_scale = scale; }
     void SetColorIndex(int colorIndex) { m_colorIndex = colorIndex; }
+    void SetGenome(const Genome& genome) { m_genome = genome; }
 };
 
 } // namespace Taxonomy
