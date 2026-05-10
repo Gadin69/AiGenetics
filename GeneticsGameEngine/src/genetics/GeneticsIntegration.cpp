@@ -64,6 +64,10 @@ bool GeneticsIntegration::Initialize()
     // Phase 4: Initialize neural systems for all organisms
     InitializeNeuralSystems();
     
+    // Phase 7.3: Initialize NN visualizer system
+    m_selectedCreatureIndex = -1;
+    m_nnVisualizer = std::make_unique<Engine::Neural::NNVisualizer>();
+    
     return true;
 }
 
@@ -291,6 +295,17 @@ void GeneticsIntegration::Update(float deltaTime)
     
     // Phase 4: Update neural systems
     UpdateNeuralSystems(deltaTime);
+    
+    // Phase 7.3: Update NN visualization for selected creature
+    if (m_selectedCreatureIndex >= 0 && m_selectedCreatureIndex < static_cast<int>(m_neuralNetworkIndices.size())) {
+        auto& neuralManager = Neural::NeuralSystemManager::GetInstance();
+        size_t networkIndex = m_neuralNetworkIndices[m_selectedCreatureIndex];
+        Neural::NeuralNetwork* network = neuralManager.GetNetwork(networkIndex);
+        
+        if (network) {
+            m_nnVisualizer->UpdateVisualization(network, deltaTime);
+        }
+    }
 }
 
 // Phase 3: Generate mesh for a single organism
@@ -369,6 +384,7 @@ CreatureMeshData GeneticsIntegration::GenerateMeshForOrganismWithParams(
     std::cout << "    Generating skeleton from genetics..." << std::endl;
     result.skeleton = organism->GenerateSkeleton();
     result.showSkeletonVisualization = false; // Default to hidden
+    result.isSelected = false; // Default to not selected
     
     // Step 3: Generate voxel grid with scalar field
     std::cout << "    Allocating voxel grid..." << std::endl;
@@ -589,18 +605,16 @@ void GeneticsIntegration::InitializeNeuralSystems()
     m_neuralNetworkIndices.reserve(m_organisms.size());
     
     for (size_t i = 0; i < m_organisms.size(); ++i) {
-        // We need to access the genome - for now, we'll create a simplified initialization
-        // In a full implementation, you'd store the genome with each organism
-        std::cout << "  Creating neural network for organism " << i << "..." << std::endl;
+        std::cout << "  Creating neural network for organism " << i << " (" << m_organisms[i]->GetID() << ")..." << std::endl;
         
-        // Create a placeholder genome (this should come from the organism)
-        // For demonstration, we'll create an empty genome
-        Engine::Genetics::Genome placeholderGenome("Organism_" + std::to_string(i) + "_Genome");
+        // CRITICAL FIX: Use the ACTUAL organism's genome, not a placeholder!
+        // Each creature's genome determines its unique neural network structure
+        const Engine::Genetics::Genome& organismGenome = m_organisms[i]->GetGenome();
         
-        size_t networkIndex = neuralManager.CreateNetworkForOrganism(placeholderGenome);
+        size_t networkIndex = neuralManager.CreateNetworkForOrganism(organismGenome);
         m_neuralNetworkIndices.push_back(networkIndex);
         
-        std::cout << "  Neural network " << networkIndex << " created for organism " << i << std::endl;
+        std::cout << "  Neural network " << networkIndex << " created for " << m_organisms[i]->GetID() << std::endl;
     }
     
     std::cout << "Neural systems initialized for " << m_neuralNetworkIndices.size() << " organisms." << std::endl;
@@ -663,6 +677,86 @@ void GeneticsIntegration::ApplyNeuralBehavioralOutputs()
             // m_organisms[i]->SetMovementSpeed(movementSpeed);
         }
     }
+}
+
+// ============================================================================
+// Phase 7.2: NN-Driven Animation System Implementation
+// ============================================================================
+
+void GeneticsIntegration::InitializeAnimationSystem()
+{
+    std::cout << "\n=== Phase 7.2: Initializing Animation System ===" << std::endl;
+    
+    m_animationControllers.clear();
+    
+    auto& neuralManager = Neural::NeuralSystemManager::GetInstance();
+    
+    for (size_t i = 0; i < m_creatureMeshes.size(); ++i) {
+        if (m_creatureMeshes[i].skeleton && i < m_neuralNetworkIndices.size()) {
+            // Get the neural network for this creature
+            size_t networkIndex = m_neuralNetworkIndices[i];
+            Neural::NeuralNetwork* neuralNetwork = neuralManager.GetNetwork(networkIndex);
+            
+            if (neuralNetwork) {
+                // Create animation controller
+                auto controller = std::make_unique<Engine::Animation::AnimationController>();
+                controller->Initialize(m_creatureMeshes[i].skeleton.get(), neuralNetwork);
+                m_animationControllers.push_back(std::move(controller));
+                
+                std::cout << "  [Animation] Created controller for creature " << i 
+                          << " (" << m_creatureMeshes[i].creatureID << ")" << std::endl;
+            } else {
+                std::cerr << "  [Animation] WARNING: No neural network for creature " << i << std::endl;
+            }
+        }
+    }
+    
+    std::cout << "[Animation System] Initialized " << m_animationControllers.size() 
+              << " animation controllers" << std::endl;
+}
+
+void GeneticsIntegration::UpdateAnimations(float deltaTime)
+{
+    if (m_animationControllers.empty()) return;
+    
+    // Update neural networks first to get fresh outputs
+    UpdateNeuralSystems(deltaTime);
+    
+    auto& neuralManager = Neural::NeuralSystemManager::GetInstance();
+    
+    // Apply neural outputs to each creature's animation
+    for (size_t i = 0; i < m_animationControllers.size(); ++i) {
+        if (!m_animationControllers[i] || !m_animationControllers[i]->IsInitialized()) continue;
+        
+        if (i < m_neuralNetworkIndices.size()) {
+            size_t networkIndex = m_neuralNetworkIndices[i];
+            Neural::NeuralNetwork* neuralNetwork = neuralManager.GetNetwork(networkIndex);
+            
+            if (neuralNetwork) {
+                // Get neural outputs
+                std::vector<float> outputs = neuralNetwork->GetOutputs();
+                
+                if (!outputs.empty()) {
+                    // Apply to animation controller
+                    m_animationControllers[i]->ApplyNeuralOutputs(outputs);
+                    m_animationControllers[i]->Update(deltaTime);
+                }
+            }
+        }
+    }
+}
+
+// Phase 7.3: NN Visualizer - Creature selection
+void GeneticsIntegration::SetSelectedCreature(int index)
+{
+    m_selectedCreatureIndex = index;
+    
+    // Update selection state in creature data
+    for (size_t i = 0; i < m_creatureMeshes.size(); ++i) {
+        m_creatureMeshes[i].isSelected = (static_cast<int>(i) == index);
+    }
+    
+    std::cout << "[NN Viz] Selected creature: " << index << std::endl;
 }
 
 // ============================================================================

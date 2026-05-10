@@ -1,6 +1,9 @@
 #include "NeuralSystemManager.h"
 #include <iostream>
 #include <algorithm>
+#include <random>
+#include <functional>
+#include <cmath>
 
 namespace Engine {
 namespace Neural {
@@ -78,14 +81,51 @@ void NeuralSystemManager::UpdateAllNetworks(float deltaTime)
         context.survivalTime += deltaTime;
     }
     
-    // Execute batch forward pass with default inputs (environmental sensors)
-    // In a full implementation, you'd gather actual sensor data
+    // Execute batch forward pass with CREATURE-SPECIFIC sensory inputs
+    // Each creature gets different inputs based on its properties for varied activation patterns
     std::vector<std::vector<float>> inputs;
     inputs.reserve(m_networks.size());
     
-    for (const auto& context : m_networks) {
-        // Default: 3 sensory inputs (simplified)
-        std::vector<float> sensorInputs = {0.5f, 0.5f, 0.5f};
+    for (size_t i = 0; i < m_networks.size(); ++i) {
+        const auto& context = m_networks[i];
+        
+        // Generate diverse sensory inputs per creature
+        // Use network index and time to create varying sensor readings
+        float timePhase = static_cast<float>(m_frameCounter) * 0.01f;
+        float creatureOffset = static_cast<float>(i) * 0.37f; // Golden ratio offset
+        
+        // Simulated sensory inputs that vary per creature and over time
+        std::vector<float> sensorInputs;
+        
+        // Input 0: Environmental stimulus (varies per creature)
+        sensorInputs.push_back(0.5f + 0.3f * std::sin(timePhase + creatureOffset));
+        
+        // Input 1: Internal state (based on genome expression)
+        if (context.genome) {
+            float avgExpression = 0.5f; // Default
+            int activeCount = 0;
+            for (const auto& chromosome : context.genome->GetChromosomes()) {
+                for (const auto& gene : chromosome.GetGenes()) {
+                    if (gene.alleleValue > 0.1f) {
+                        avgExpression += gene.alleleValue;
+                        activeCount++;
+                    }
+                }
+            }
+            if (activeCount > 0) avgExpression /= activeCount;
+            sensorInputs.push_back(avgExpression + 0.2f * std::sin(timePhase * 1.3f + creatureOffset * 2.0f));
+        } else {
+            sensorInputs.push_back(0.5f + 0.3f * std::cos(timePhase * 0.7f + creatureOffset));
+        }
+        
+        // Input 2: Neural feedback (oscillates differently per creature)
+        sensorInputs.push_back(0.5f + 0.4f * std::sin(timePhase * 1.7f + creatureOffset * 3.0f));
+        
+        // Clamp to 0-1 range
+        for (auto& val : sensorInputs) {
+            val = std::max(0.0f, std::min(1.0f, val));
+        }
+        
         inputs.push_back(std::move(sensorInputs));
     }
     
@@ -189,41 +229,108 @@ void NeuralSystemManager::Clear()
 
 void NeuralSystemManager::InitializeNetwork(NetworkContext& context)
 {
-    // Create default sensory neurons (3 inputs)
-    for (int i = 0; i < 3; ++i) {
+    // CRITICAL FIX: Use genome to determine neural network structure
+    // Each creature's genome creates a UNIQUE neural network
+    const auto& genome = *context.genome;
+    
+    // Calculate genome complexity (number of active genes)
+    int activeGeneCount = 0;
+    float totalExpression = 0.0f;
+    for (const auto& chromosome : genome.GetChromosomes()) {
+        for (const auto& gene : chromosome.GetGenes()) {
+            // Consider genes with alleleValue > 0.1 as "active"
+            if (gene.alleleValue > 0.1f) {
+                activeGeneCount++;
+                totalExpression += gene.alleleValue;
+            }
+        }
+    }
+    
+    // Genome-driven network sizing
+    // More active genes = more complex neural network
+    int sensoryCount = std::max(3, activeGeneCount / 10);  // 1 sensory per 10 active genes (min 3)
+    int motorCount = std::max(2, activeGeneCount / 15);    // 1 motor per 15 active genes (min 2)
+    int hiddenCount = std::max(5, activeGeneCount / 5);    // 1 hidden per 5 active genes (min 5)
+    
+    // Clamp to reasonable limits
+    sensoryCount = std::min(sensoryCount, 10);
+    motorCount = std::min(motorCount, 8);
+    hiddenCount = std::min(hiddenCount, 30);
+    
+    std::cout << "  [NN Init] Genome-driven network: " << sensoryCount << " sensory, "
+              << hiddenCount << " hidden, " << motorCount << " motor neurons" << std::endl;
+    
+    // Use genome ID hash as seed for random number generator
+    // This ensures each creature gets deterministic but unique connections
+    std::hash<std::string> genomeHash;
+    size_t hashValue = genomeHash(genome.GetID());
+    std::mt19937 rng(static_cast<unsigned int>(hashValue));
+    std::uniform_real_distribution<float> weightDist(-0.5f, 0.5f);
+    
+    // Create sensory neurons
+    for (int i = 0; i < sensoryCount; ++i) {
         Neuron sensoryNeuron(NeuronType::Sensory);
         sensoryNeuron.activation = 0.5f;
         context.network->AddNeuron(std::move(sensoryNeuron));
     }
     
-    // Create default motor neurons (2 outputs)
-    for (int i = 0; i < 2; ++i) {
+    // Create hidden/general neurons
+    for (int i = 0; i < hiddenCount; ++i) {
+        Neuron hiddenNeuron(NeuronType::General);
+        // Set threshold based on genome expression
+        hiddenNeuron.threshold = 0.2f + (totalExpression / std::max(activeGeneCount, 1)) * 0.3f;
+        context.network->AddNeuron(std::move(hiddenNeuron));
+    }
+    
+    // Create motor neurons
+    for (int i = 0; i < motorCount; ++i) {
         Neuron motorNeuron(NeuronType::Motor);
         context.network->AddNeuron(std::move(motorNeuron));
     }
     
-    // Create some initial general neurons
-    for (int i = 0; i < 5; ++i) {
-        Neuron generalNeuron(NeuronType::General);
-        context.network->AddNeuron(std::move(generalNeuron));
-    }
+    // Create genome-driven connections
+    uint32_t sensoryStart = 0;
+    uint32_t hiddenStart = static_cast<uint32_t>(sensoryCount);
+    uint32_t motorStart = static_cast<uint32_t>(sensoryCount + hiddenCount);
     
-    // Create initial random connections
-    // Connect sensory to general neurons
-    for (uint32_t sensoryIdx = 0; sensoryIdx < 3; ++sensoryIdx) {
-        for (uint32_t generalIdx = 3; generalIdx < 8; ++generalIdx) {
-            float weight = (static_cast<float>(rand()) / RAND_MAX - 0.5f) * 0.5f;
-            context.network->AddSynapse(sensoryIdx, generalIdx, weight);
+    // Connect sensory to hidden neurons (with genome-influenced density)
+    float connectionDensity = std::min(0.8f, totalExpression / std::max(activeGeneCount, 1));
+    std::uniform_real_distribution<float> densityDist(0.0f, 1.0f);
+    
+    for (uint32_t sensoryIdx = sensoryStart; sensoryIdx < sensoryStart + sensoryCount; ++sensoryIdx) {
+        for (uint32_t hiddenIdx = hiddenStart; hiddenIdx < hiddenStart + hiddenCount; ++hiddenIdx) {
+            if (densityDist(rng) < connectionDensity) {
+                float weight = weightDist(rng);
+                context.network->AddSynapse(sensoryIdx, hiddenIdx, weight);
+            }
         }
     }
     
-    // Connect general to motor neurons
-    for (uint32_t generalIdx = 3; generalIdx < 8; ++generalIdx) {
-        for (uint32_t motorIdx = 8; motorIdx < 10; ++motorIdx) {
-            float weight = (static_cast<float>(rand()) / RAND_MAX - 0.5f) * 0.5f;
-            context.network->AddSynapse(generalIdx, motorIdx, weight);
+    // Connect hidden to motor neurons
+    for (uint32_t hiddenIdx = hiddenStart; hiddenIdx < hiddenStart + hiddenCount; ++hiddenIdx) {
+        for (uint32_t motorIdx = motorStart; motorIdx < motorStart + motorCount; ++motorIdx) {
+            if (densityDist(rng) < connectionDensity) {
+                float weight = weightDist(rng);
+                context.network->AddSynapse(hiddenIdx, motorIdx, weight);
+            }
         }
     }
+    
+    // Add some random hidden-to-hidden connections for recurrent behavior
+    int recurrentConnections = hiddenCount / 3;
+    std::uniform_int_distribution<uint32_t> hiddenDist(hiddenStart, hiddenStart + hiddenCount - 1);
+    for (int i = 0; i < recurrentConnections; ++i) {
+        uint32_t from = hiddenDist(rng);
+        uint32_t to = hiddenDist(rng);
+        if (from != to) {
+            float weight = weightDist(rng) * 0.3f; // Weaker recurrent connections
+            context.network->AddSynapse(from, to, weight);
+        }
+    }
+    
+    std::cout << "  [NN Init] Created network with " 
+              << context.network->GetNeurons().size() << " neurons, "
+              << context.network->GetSynapses().size() << " synapses" << std::endl;
 }
 
 } // namespace Neural
